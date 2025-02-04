@@ -22,11 +22,11 @@ public class PublishResourceV2 {
     }
 
     @POST
-    @Path("publish/{agentId}")
-    public void publish(@PathParam("agentId") String agentId, String message) {
+    @Path("publish/{userId}")
+    public void publish(@PathParam("userId") String userId, String message) {
         try {
-            log.info("publish request received for {}, message: {}", agentId, message);
-            String topic = "topic-" + agentId;
+            log.info("publish request received for {}, message: {}", userId, message);
+            String topic = "topic-" + userId;
             ProducerRecord<String, String> record = new ProducerRecord<>(topic, message);
             producer.send(record);
         } catch (Exception e) {

@@ -27,13 +27,13 @@ public class PublishResourceV3 {
     }
 
     @POST
-    @Path("publish/{agentId}")
+    @Path("publish/{userId}")
     @Timed(name = "publish")
-    public void publish(@PathParam("agentId") String agentId, String message) {
+    public void publish(@PathParam("userId") String userId, String message) {
         try {
-            log.info("publish request received for {}, message: {}", agentId, message);
-            String topic = new String(curator.getData().forPath("/agent/" + agentId), StandardCharsets.UTF_8);
-            ProducerRecord<String, String> record = new ProducerRecord<>(topic, agentId, message);
+            log.info("publish request received for {}, message: {}", userId, message);
+            String topic = new String(curator.getData().forPath("/user/" + userId), StandardCharsets.UTF_8);
+            ProducerRecord<String, String> record = new ProducerRecord<>(topic, userId, message);
             producer.send(record);
         } catch (Exception e) {
             log.error("Exception occurred in publish", e);

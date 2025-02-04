@@ -36,9 +36,9 @@ import java.util.concurrent.atomic.AtomicReference;
  * Instance to wait for free topic if none available during startup using watcher on free topics.
  * */
 @Slf4j
-@ServerEndpoint("/v3/register/{agentId}")
+@ServerEndpoint("/v3/register/{userId}")
 public class RegisterResourceV3 implements CuratorCacheListener {
-    private final ConcurrentHashMap<String, Session> agentIdSessionMap = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Session> userIdSessionMap = new ConcurrentHashMap<>();
     private final SockkeeperConfiguration configuration;
     private final CuratorFramework curator;
     private final String hostname;
@@ -73,7 +73,7 @@ public class RegisterResourceV3 implements CuratorCacheListener {
                     Properties properties = getConsumerProperties();
                     KafkaConsumer<String, String> kafkaConsumer = new KafkaConsumer<>(properties);
                     kafkaConsumer.subscribe(List.of(topic));
-                    ConsumerV3 consumer = new ConsumerV3(agentIdSessionMap, kafkaConsumer, metricRegistry);
+                    ConsumerV3 consumer = new ConsumerV3(userIdSessionMap, kafkaConsumer, metricRegistry);
                     executorService.submit(consumer);
                     return;
                 } catch (Exception e) {
@@ -99,28 +99,28 @@ public class RegisterResourceV3 implements CuratorCacheListener {
     }
 
     @OnOpen
-    public void onOpen(Session session, @PathParam("agentId") String agentId) throws Exception {
-        log.info("socket connection opened for: {}", agentId);
+    public void onOpen(Session session, @PathParam("userId") String userId) throws Exception {
+        log.info("socket connection opened for: {}", userId);
         session.setMaxIdleTimeout(-1);
         curator.create()
                 .creatingParentsIfNeeded()
                 .withMode(CreateMode.EPHEMERAL)
-                .forPath("/agent/" + agentId, topicAssigned.get().getBytes(StandardCharsets.UTF_8));
-        agentIdSessionMap.put(agentId, session);
+                .forPath("/user/" + userId, topicAssigned.get().getBytes(StandardCharsets.UTF_8));
+        userIdSessionMap.put(userId, session);
     }
 
     @OnMessage
-    public void onMessage(Session session, String message, @PathParam("agentId") String agentId) {
-        log.info("message: {} , received on socket connection for: {}", message, agentId);
+    public void onMessage(Session session, String message, @PathParam("userId") String userId) {
+        log.info("message: {} , received on socket connection for: {}", message, userId);
         //ignore
     }
 
     @OnClose
-    public void onClose(Session session, @PathParam("agentId") String agentId) {
-        log.info("socket connection closed for: {}", agentId);
-        agentIdSessionMap.remove(agentId);
+    public void onClose(Session session, @PathParam("userId") String userId) {
+        log.info("socket connection closed for: {}", userId);
+        userIdSessionMap.remove(userId);
         try {
-            curator.delete().guaranteed().forPath("/agent/" + agentId);
+            curator.delete().guaranteed().forPath("/user/" + userId);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -153,7 +153,7 @@ public class RegisterResourceV3 implements CuratorCacheListener {
                 Properties properties = getConsumerProperties();
                 KafkaConsumer<String, String> kafkaConsumer = new KafkaConsumer<>(properties);
                 kafkaConsumer.subscribe(List.of(topic));
-                ConsumerV3 consumer = new ConsumerV3(agentIdSessionMap, kafkaConsumer, metricRegistry);
+                ConsumerV3 consumer = new ConsumerV3(userIdSessionMap, kafkaConsumer, metricRegistry);
                 executorService.submit(consumer);
             } catch (Exception e) {
                 log.warn("couldn't lock topic {}, still waiting", topic, e);

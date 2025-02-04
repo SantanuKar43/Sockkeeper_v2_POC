@@ -27,16 +27,16 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Dynamic topic allocation to agent on connection and de-allocation on disconnect.
+ * Dynamic topic allocation to user on connection and de-allocation on disconnect.
  * Complex co-ordination logic involving distributed locks.
  * */
 @Slf4j
-@ServerEndpoint("/v1/register/{agentId}")
+@ServerEndpoint("/v1/register/{userId}")
 public class RegisterResource implements CuratorCacheListener {
 
     private static final String FREE_TOPICS_PATH = "/free";
     private static final String LOCKED_TOPICS_PATH = "/locked";
-    private final Map<String, AtomicBoolean> agentConnectionStatusMap = new ConcurrentHashMap<>();
+    private final Map<String, AtomicBoolean> userConnectionStatusMap = new ConcurrentHashMap<>();
     private final ExecutorService executorService = Executors.newFixedThreadPool(500);
     private final CuratorFramework curator;
     private final SockkeeperConfiguration configuration;
@@ -51,8 +51,8 @@ public class RegisterResource implements CuratorCacheListener {
     }
 
     @OnOpen
-    public void onOpen(Session session, @PathParam("agentId") String agentId) throws Exception {
-        log.info("socket connection opened for: {}", agentId);
+    public void onOpen(Session session, @PathParam("userId") String userId) throws Exception {
+        log.info("socket connection opened for: {}", userId);
         session.setMaxIdleTimeout(-1);
         String freeTopic = getFreeTopic();
         if (freeTopic == null || freeTopic.isEmpty()) {
@@ -61,28 +61,28 @@ public class RegisterResource implements CuratorCacheListener {
         try {
             curator.create()
                     .withMode(CreateMode.EPHEMERAL)
-                    .forPath("/" + agentId, freeTopic.getBytes(StandardCharsets.UTF_8));
-            agentConnectionStatusMap.computeIfAbsent(agentId,
+                    .forPath("/" + userId, freeTopic.getBytes(StandardCharsets.UTF_8));
+            userConnectionStatusMap.computeIfAbsent(userId,
                     key -> new AtomicBoolean()).set(true);
 
-            Properties properties = getConsumerProperties(agentId);
+            Properties properties = getConsumerProperties(userId);
             KafkaConsumer<String, String> kafkaConsumer = new KafkaConsumer<>(properties);
             kafkaConsumer.subscribe(List.of(freeTopic));
-            Consumer consumer = new Consumer(kafkaConsumer, agentConnectionStatusMap.get(agentId), session);
+            Consumer consumer = new Consumer(kafkaConsumer, userConnectionStatusMap.get(userId), session);
             executorService.submit(consumer);
         } catch (Exception e) {
             log.error("Exception occurred on open:", e);
-            curator.delete().idempotent().forPath("/" + agentId);
+            curator.delete().idempotent().forPath("/" + userId);
             curator.delete().idempotent().forPath(LOCKED_TOPICS_PATH + "/" + freeTopic);
-            agentConnectionStatusMap.get(agentId).set(false);
-            agentConnectionStatusMap.remove(agentId);
+            userConnectionStatusMap.get(userId).set(false);
+            userConnectionStatusMap.remove(userId);
         }
     }
 
-    private Properties getConsumerProperties(String agentId) {
+    private Properties getConsumerProperties(String userId) {
         Properties properties = new Properties();
         properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, configuration.getKafka().getServers());
-        properties.put(ConsumerConfig.GROUP_ID_CONFIG, "consumer-group-" + agentId);
+        properties.put(ConsumerConfig.GROUP_ID_CONFIG, "consumer-group-" + userId);
         properties.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         properties.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");  // Read from the earliest message if no offset exists
@@ -116,19 +116,19 @@ public class RegisterResource implements CuratorCacheListener {
     }
 
     @OnMessage
-    public void onMessage(Session session, String message, @PathParam("agentId") String agentId) {
-        log.info("message: {} , received on socket connection for: {}", message, agentId);
+    public void onMessage(Session session, String message, @PathParam("userId") String userId) {
+        log.info("message: {} , received on socket connection for: {}", message, userId);
         // ignored
     }
 
     @OnClose
-    public void onClose(Session session, @PathParam("agentId") String agentId) {
+    public void onClose(Session session, @PathParam("userId") String userId) {
         try {
-            log.info("socket connection closed for: {}", agentId);
-            agentConnectionStatusMap.getOrDefault(agentId, new AtomicBoolean()).set(false);
-            agentConnectionStatusMap.remove(agentId);
-            String topic = new String(curator.getData().forPath("/" + agentId), StandardCharsets.UTF_8);
-            curator.delete().forPath("/" + agentId);
+            log.info("socket connection closed for: {}", userId);
+            userConnectionStatusMap.getOrDefault(userId, new AtomicBoolean()).set(false);
+            userConnectionStatusMap.remove(userId);
+            String topic = new String(curator.getData().forPath("/" + userId), StandardCharsets.UTF_8);
+            curator.delete().forPath("/" + userId);
             curator.delete().forPath(LOCKED_TOPICS_PATH + "/" + topic);
         } catch (Exception e) {
             log.error("Error occurred in closing session:", e);

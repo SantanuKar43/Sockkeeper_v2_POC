@@ -27,11 +27,11 @@ public class PublishResource {
     }
 
     @POST
-    @Path("publish/{agentId}")
-    public void publish(@PathParam("agentId") String agentId, String message) {
+    @Path("publish/{userId}")
+    public void publish(@PathParam("userId") String userId, String message) {
         try {
-            log.info("publish request received for {}, message: {}", agentId, message);
-            String topic = new String(curator.getData().forPath("/" + agentId), StandardCharsets.UTF_8);
+            log.info("publish request received for {}, message: {}", userId, message);
+            String topic = new String(curator.getData().forPath("/" + userId), StandardCharsets.UTF_8);
             ProducerRecord<String, String> record = new ProducerRecord<>(topic, message);
             producer.send(record);
         } catch (Exception e) {

@@ -11,12 +11,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 public class ConsumerV3 implements Runnable {
-    private final ConcurrentHashMap<String, Session> agentIdSessionMap;
+    private final ConcurrentHashMap<String, Session> userIdSessionMap;
     private final KafkaConsumer<String, String> kafkaConsumer;
     private final MetricRegistry metricRegistry;
 
-    public ConsumerV3(ConcurrentHashMap<String, Session> agentIdSessionMap, KafkaConsumer<String, String> kafkaConsumer, MetricRegistry metricRegistry) {
-        this.agentIdSessionMap = agentIdSessionMap;
+    public ConsumerV3(ConcurrentHashMap<String, Session> userIdSessionMap, KafkaConsumer<String, String> kafkaConsumer, MetricRegistry metricRegistry) {
+        this.userIdSessionMap = userIdSessionMap;
         this.kafkaConsumer = kafkaConsumer;
         this.metricRegistry = metricRegistry;
     }
@@ -29,7 +29,7 @@ public class ConsumerV3 implements Runnable {
             while (true) {
                 kafkaConsumer.poll(Duration.ofMillis(2000)).forEach(record -> {
                     Timer.Context consumeV3Time = consumeV3Timer.time();
-                    Session session = agentIdSessionMap.get(record.key());
+                    Session session = userIdSessionMap.get(record.key());
                     if (session.isOpen()) {
                         session.getAsyncRemote().sendText(record.value());
                     }

@@ -20,14 +20,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * 1 topic per agent, identified by agentId - agents might leave fk or new agents might join which will require topic creation/deletion.
- * Additional solve needed to manage agents.
+ * 1 topic per user, identified by userId - users might leave fk or new users might join which will require topic creation/deletion.
+ * Additional solve needed to manage users.
  * */
 @Slf4j
-@ServerEndpoint("/v2/register/{agentId}")
+@ServerEndpoint("/v2/register/{userId}")
 public class RegisterResourceV2 {
 
-    private final ConcurrentHashMap<String, Consumer> agentIdConsumerMap = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Consumer> userIdConsumerMap = new ConcurrentHashMap<>();
     private final ExecutorService executorService = Executors.newFixedThreadPool(500);
     private final SockkeeperConfiguration configuration;
 
@@ -36,34 +36,34 @@ public class RegisterResourceV2 {
     }
 
     @OnOpen
-    public void onOpen(Session session, @PathParam("agentId") String agentId) throws Exception {
-        log.info("socket connection opened for: {}", agentId);
+    public void onOpen(Session session, @PathParam("userId") String userId) throws Exception {
+        log.info("socket connection opened for: {}", userId);
         session.setMaxIdleTimeout(-1);
-        Properties properties = getConsumerProperties(agentId);
+        Properties properties = getConsumerProperties(userId);
         KafkaConsumer<String, String> kafkaConsumer = new KafkaConsumer<>(properties);
-        kafkaConsumer.subscribe(List.of("topic-" + agentId));
+        kafkaConsumer.subscribe(List.of("topic-" + userId));
         Consumer consumer = new Consumer(kafkaConsumer, new AtomicBoolean(true), session);
-        agentIdConsumerMap.put(agentId, consumer);
+        userIdConsumerMap.put(userId, consumer);
         executorService.submit(consumer);
     }
 
     @OnMessage
-    public void onMessage(Session session, String message, @PathParam("agentId") String agentId) {
-        log.info("message: {} , received on socket connection for: {}", message, agentId);
+    public void onMessage(Session session, String message, @PathParam("userId") String userId) {
+        log.info("message: {} , received on socket connection for: {}", message, userId);
         //ignore
     }
 
     @OnClose
-    public void onClose(Session session, @PathParam("agentId") String agentId) {
-        log.info("socket connection closed for: {}", agentId);
-        agentIdConsumerMap.get(agentId).stop();
-        agentIdConsumerMap.remove(agentId);
+    public void onClose(Session session, @PathParam("userId") String userId) {
+        log.info("socket connection closed for: {}", userId);
+        userIdConsumerMap.get(userId).stop();
+        userIdConsumerMap.remove(userId);
     }
 
-    private Properties getConsumerProperties(String agentId) {
+    private Properties getConsumerProperties(String userId) {
         Properties properties = new Properties();
         properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, configuration.getKafka().getServers());
-        properties.put(ConsumerConfig.GROUP_ID_CONFIG, "consumer-group-" + agentId);
+        properties.put(ConsumerConfig.GROUP_ID_CONFIG, "consumer-group-" + userId);
         properties.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         properties.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");  // Read from the earliest message if no offset exists

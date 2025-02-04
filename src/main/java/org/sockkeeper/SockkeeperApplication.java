@@ -53,7 +53,7 @@ public class SockkeeperApplication extends Application<SockkeeperConfiguration> 
                     new WebSocketConfigurator(curatorFramework, configuration, hostname,
                             injector.getInstance(RegisterResourceV3.class));
             ServerEndpointConfig config = ServerEndpointConfig.Builder
-                    .create(RegisterResourceV3.class, "/v3/register/{agentId}")
+                    .create(RegisterResourceV3.class, "/v3/register/{userId}")
                     .configurator(configurator)
                     .build();
             wsContainer.addEndpoint(config);
