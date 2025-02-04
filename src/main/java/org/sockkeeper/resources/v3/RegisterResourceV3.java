@@ -1,6 +1,8 @@
 package org.sockkeeper.resources.v3;
 
 import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
+import com.codahale.metrics.annotation.Timed;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import jakarta.websocket.OnClose;
@@ -59,9 +61,7 @@ public class RegisterResourceV3 implements CuratorCacheListener {
             List<String> topics = curator.getChildren().forPath("/free");
             if (topics == null || topics.isEmpty()) {
                 log.warn("Couldn't find a free topic");
-                CuratorCache curatorCache = CuratorCache.build(curator, "/free");
-                curatorCache.listenable().addListener(this);
-                curatorCache.start();
+                startWatcher();
                 return;
             }
             for (String topic : topics) {
@@ -82,10 +82,14 @@ public class RegisterResourceV3 implements CuratorCacheListener {
             }
         } catch (Exception e) {
             log.error("Error while trying to find a free topic", e.getCause());
-            CuratorCache curatorCache = CuratorCache.build(curator, "/free");
-            curatorCache.listenable().addListener(this);
-            curatorCache.start();
+            startWatcher();
         }
+    }
+
+    private void startWatcher() {
+        CuratorCache curatorCache = CuratorCache.build(curator, "/free");
+        curatorCache.listenable().addListener(this);
+        curatorCache.start();
     }
 
     private Properties getConsumerProperties() {
@@ -100,6 +104,7 @@ public class RegisterResourceV3 implements CuratorCacheListener {
 
     @OnOpen
     public void onOpen(Session session, @PathParam("userId") String userId) throws Exception {
+        Timer.Context onOpen = metricRegistry.timer("onOpen").time();
         log.info("socket connection opened for: {}", userId);
         session.setMaxIdleTimeout(-1);
         curator.create()
@@ -107,6 +112,7 @@ public class RegisterResourceV3 implements CuratorCacheListener {
                 .withMode(CreateMode.EPHEMERAL)
                 .forPath("/user/" + userId, topicAssigned.get().getBytes(StandardCharsets.UTF_8));
         userIdSessionMap.put(userId, session);
+        onOpen.close();
     }
 
     @OnMessage
@@ -117,12 +123,15 @@ public class RegisterResourceV3 implements CuratorCacheListener {
 
     @OnClose
     public void onClose(Session session, @PathParam("userId") String userId) {
+        Timer.Context onClose = metricRegistry.timer("onClose").time();
         log.info("socket connection closed for: {}", userId);
         userIdSessionMap.remove(userId);
         try {
             curator.delete().guaranteed().forPath("/user/" + userId);
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            onClose.close();
         }
     }
 
