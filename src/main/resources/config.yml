@@ -20,3 +20,10 @@ zk:
   sessionTimeout: 1000
   retryBaseSleepTime: 10000
   maxRetry: 3
+
+pulsar:
+  serviceUrl: pulsar://localhost:6650
+
+redis:
+  host: 127.0.0.1
+  port: 6379

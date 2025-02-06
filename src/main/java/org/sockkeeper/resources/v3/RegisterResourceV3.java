@@ -34,8 +34,11 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 1 topic per instance.
- * co-ordination required only during startup.
+ * Co-ordination required only during startup.
  * Instance to wait for free topic if none available during startup using watcher on free topics.
+ * Prone to message loss during race condition between publish and user disconnection,
+ * complex retry logic required to handle intermittent user disconnection.
+ * Ephemeral nodes can get deleted due to network issues, requires complex heartbeat mechanisms to solve.
  * */
 @Slf4j
 @ServerEndpoint("/v3/register/{userId}")

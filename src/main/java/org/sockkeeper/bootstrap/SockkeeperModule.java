@@ -12,11 +12,14 @@ import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.pulsar.client.api.PulsarClient;
+import org.apache.pulsar.client.api.PulsarClientException;
 import org.sockkeeper.config.SockkeeperConfiguration;
+import redis.clients.jedis.JedisPool;
 
-import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Properties;
+import java.util.concurrent.Executors;
 
 public class SockkeeperModule extends AbstractModule {
 
@@ -71,12 +74,27 @@ public class SockkeeperModule extends AbstractModule {
     @Provides
     @Named("hostname")
     public String getHostName() throws UnknownHostException {
-        return InetAddress.getLocalHost().getHostName();
+        return "sockkeeper-host-1";
     }
 
     @Singleton
     @Provides
     public MetricRegistry getMetricRegistry() {
         return environment.metrics();
+    }
+
+    @Singleton
+    @Provides
+    public JedisPool getJedisPool() {
+        return new JedisPool(configuration.getRedis().getHost(), configuration.getRedis().getPort());
+    }
+
+    @Singleton
+    @Provides
+    public PulsarClient getPulsarClient() throws PulsarClientException {
+        return PulsarClient.builder()
+                .serviceUrl(configuration.getPulsar().getServiceUrl())
+                .listenerThreads(Runtime.getRuntime().availableProcessors())
+                .build();
     }
 }

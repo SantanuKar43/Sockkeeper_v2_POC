@@ -10,7 +10,7 @@ from confluent_kafka.admin import AdminClient, NewTopic
 # Configurations
 KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"  # Change as needed
 BASE_URL = "http://localhost:8888"  # Change as needed
-WEBSOCKET_URL = "ws://localhost:8888/v3/register"
+WEBSOCKET_URL = "ws://localhost:8888/v4/register"
 NUM_USERS = 500
 MESSAGES_PER_USER = 10
 

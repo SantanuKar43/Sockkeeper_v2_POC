@@ -9,4 +9,6 @@ import lombok.Setter;
 public class SockkeeperConfiguration extends Configuration {
     private KafkaConfig kafka;
     private ZkConfig zk;
+    private PulsarConfig pulsar;
+    private RedisConfig redis;
 }

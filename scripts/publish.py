@@ -10,7 +10,6 @@ from confluent_kafka.admin import AdminClient, NewTopic
 # Configurations
 KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"  # Change as needed
 BASE_URL = "http://localhost:8888"  # Change as needed
-WEBSOCKET_URL = "ws://localhost:8888/v3/register"
 NUM_USERS = 500
 MESSAGES_PER_USER = 50
 
@@ -21,7 +20,7 @@ admin_client = AdminClient({"bootstrap.servers": KAFKA_BOOTSTRAP_SERVERS})
 # HTTP Publisher
 def publish_message(user_id, message):
     """Publishes messages via HTTP."""
-    url = f"{BASE_URL}/v3/publish/{user_id}"
+    url = f"{BASE_URL}/v4/publish/{user_id}"
     try:
         response = requests.post(url, data=message)
         if response.status_code != 204:

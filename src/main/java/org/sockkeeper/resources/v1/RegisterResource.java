@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Dynamic topic allocation to user on connection and de-allocation on disconnect.
  * Complex co-ordination logic involving distributed locks.
+ * Too many topics
  * */
 @Slf4j
 @ServerEndpoint("/v1/register/{userId}")

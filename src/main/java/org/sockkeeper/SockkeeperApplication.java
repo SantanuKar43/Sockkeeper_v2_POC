@@ -15,10 +15,8 @@ import org.sockkeeper.bootstrap.SockkeeperModule;
 import org.sockkeeper.bootstrap.WebSocketConfigurator;
 import org.sockkeeper.config.SockkeeperConfiguration;
 import org.sockkeeper.health.Basic;
-import org.sockkeeper.resources.v2.PublishResourceV2;
-import org.sockkeeper.resources.v2.RegisterResourceV2;
-import org.sockkeeper.resources.v3.PublishResourceV3;
-import org.sockkeeper.resources.v3.RegisterResourceV3;
+import org.sockkeeper.resources.v4.PublishResourceV4;
+import org.sockkeeper.resources.v4.RegisterResourceV4;
 
 
 public class SockkeeperApplication extends Application<SockkeeperConfiguration> {
@@ -43,7 +41,7 @@ public class SockkeeperApplication extends Application<SockkeeperConfiguration> 
         Injector injector = Guice.createInjector(new SockkeeperModule(configuration, environment));
         environment.healthChecks().register("basic", injector.getInstance(Basic.class));
 //        environment.jersey().register(injector.getInstance(PublishResource.class));
-        environment.jersey().register(injector.getInstance(PublishResourceV3.class));
+        environment.jersey().register(injector.getInstance(PublishResourceV4.class));
         String hostname = injector.getInstance(Key.get(String.class, Names.named("hostname")));
 
         ServletContextHandler contextHandler = environment.getApplicationContext();
@@ -51,9 +49,9 @@ public class SockkeeperApplication extends Application<SockkeeperConfiguration> 
         JakartaWebSocketServletContainerInitializer.configure(contextHandler, (servletContext, wsContainer) -> {
             ServerEndpointConfig.Configurator configurator =
                     new WebSocketConfigurator(curatorFramework, configuration, hostname,
-                            injector.getInstance(RegisterResourceV3.class));
+                            injector.getInstance(RegisterResourceV4.class));
             ServerEndpointConfig config = ServerEndpointConfig.Builder
-                    .create(RegisterResourceV3.class, "/v3/register/{userId}")
+                    .create(RegisterResourceV4.class, "/v4/register/{userId}")
                     .configurator(configurator)
                     .build();
             wsContainer.addEndpoint(config);

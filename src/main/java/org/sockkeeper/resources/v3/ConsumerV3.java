@@ -30,7 +30,7 @@ public class ConsumerV3 implements Runnable {
                 kafkaConsumer.poll(Duration.ofMillis(2000)).forEach(record -> {
                     Timer.Context consumeV3Time = consumeV3Timer.time();
                     Session session = userIdSessionMap.get(record.key());
-                    if (session.isOpen()) {
+                    if (session != null && session.isOpen()) {
                         session.getAsyncRemote().sendText(record.value());
                     }
                     log.info("Received message: {} from topic: {}", record.value(), record.topic());
