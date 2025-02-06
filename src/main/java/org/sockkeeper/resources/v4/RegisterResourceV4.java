@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * Intermittent disconnects are handled via internode communication.
  * Requires stable ordered hostnames,
  * easily achievable by k8s <a href="https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/">StatefulSets</a>
+ * Prone to out of order messages during disconnects, UI to handle ordering.
  * */
 @Slf4j
 @ServerEndpoint("/v4/register/{userId}")
