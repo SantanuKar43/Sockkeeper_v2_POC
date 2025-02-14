@@ -17,6 +17,7 @@ import org.apache.pulsar.client.api.PulsarClientException;
 import org.sockkeeper.config.SockkeeperConfiguration;
 import redis.clients.jedis.JedisPool;
 
+import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Properties;
 import java.util.concurrent.Executors;
@@ -74,7 +75,7 @@ public class SockkeeperModule extends AbstractModule {
     @Provides
     @Named("hostname")
     public String getHostName() throws UnknownHostException {
-        return "sockkeeper-host-1";
+        return InetAddress.getLocalHost().getHostName();
     }
 
     @Singleton

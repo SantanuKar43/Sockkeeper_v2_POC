@@ -9,27 +9,26 @@ from confluent_kafka.admin import AdminClient, NewTopic
 
 # Configurations
 KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"  # Change as needed
-BASE_URL = "http://localhost:8888"  # Change as needed
-WEBSOCKET_URL = "ws://localhost:8888/v4/register"
-NUM_USERS = 500
-MESSAGES_PER_USER = 10
+# WEBSOCKET_URL = "ws://localhost:8888/v4/register"
+WEBSOCKET_URL = "ws://sockkeeper.local/v4/register"
+NUM_USERS = 6000
 
 # Kafka Admin Client for topic creation
-admin_client = AdminClient({"bootstrap.servers": KAFKA_BOOTSTRAP_SERVERS})
+# admin_client = AdminClient({"bootstrap.servers": KAFKA_BOOTSTRAP_SERVERS})
 
-def create_kafka_topics():
-    """Creates 1000 Kafka topics (one per user)."""
-    topics = [NewTopic(f"topic-{user_id}", num_partitions=1, replication_factor=1) for user_id in range(NUM_USERS)]
-
-    print("Creating Kafka topics...")
-    futures = admin_client.create_topics(topics)
-
-    for topic, future in futures.items():
-        try:
-            future.result()  # Wait for topic creation
-            print(f"Created topic: {topic}")
-        except Exception as e:
-            print(f"Failed to create topic {topic}: {e}")
+# def create_kafka_topics():
+#     """Creates 1000 Kafka topics (one per user)."""
+#     topics = [NewTopic(f"topic-{user_id}", num_partitions=1, replication_factor=1) for user_id in range(NUM_USERS)]
+#
+#     print("Creating Kafka topics...")
+#     futures = admin_client.create_topics(topics)
+#
+#     for topic, future in futures.items():
+#         try:
+#             future.result()  # Wait for topic creation
+#             print(f"Created topic: {topic}")
+#         except Exception as e:
+#             print(f"Failed to create topic {topic}: {e}")
 
 
 # WebSocket Consumer
@@ -39,9 +38,9 @@ async def consume_messages(user_id):
         async with websockets.connect(url) as ws:
             print(f"Connected: User {user_id}")
             start_time = time.time()
-            while time.time() - start_time < 60:  # Timeout after 25s
+            while time.time() - start_time < 60*5 :  # Timeout after 25s
                 try:
-                    msg = await asyncio.wait_for(ws.recv(), timeout=30)
+                    msg = await asyncio.wait_for(ws.recv(), timeout=60*5)
                     print(f"User {user_id} received: {msg}")
                     start_time = time.time()  # Reset timeout on message
                 except asyncio.TimeoutError:
@@ -60,7 +59,7 @@ if __name__ == "__main__":
     print("Starting Load Test...")
     start_time = time.time()
 
-    create_kafka_topics()
+    # create_kafka_topics()
 
     print("Listening for messages via WebSockets...")
     asyncio.run(run_websockets())

@@ -1,0 +1,109 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sockkeeper-config
+data:
+  config.yml: |
+    logging:
+      level: INFO
+      loggers:
+        sockkeeper: INFO
+
+    server:
+      applicationConnectors:
+        - type: http
+          port: 8888
+      adminConnectors:
+        - type: http
+          port: 8889
+
+    kafka:
+      servers: host.docker.internal:9092
+
+    zk:
+      connectionString: host.docker.internal:2181
+      connectionTimeout: 15000
+      sessionTimeout: 1000
+      retryBaseSleepTime: 10000
+      maxRetry: 3
+
+    pulsar:
+      serviceUrl: pulsar://host.docker.internal:6650
+
+    redis:
+      host: host.docker.internal
+      port: 6379
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sockkeeper-service
+spec:
+  selector:
+    app: sockkeeper
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8888
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: sk-node
+spec:
+  serviceName: sockkeeper-headless
+  replicas: 3
+  selector:
+    matchLabels:
+      app: sockkeeper
+  template:
+    metadata:
+      labels:
+        app: sockkeeper
+    spec:
+      containers:
+        - name: sockkeeper
+          image: sockkeeper
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8888
+            - containerPort: 8889
+          volumeMounts:
+            - name: config-volume
+              mountPath: /app/config.yml
+              subPath: config.yml
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+      volumes:
+        - name: config-volume
+          configMap:
+            name: sockkeeper-config
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sockkeeper-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/load-balance: "least_conn"
+spec:
+  rules:
+    - host: sockkeeper.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sockkeeper-service
+                port:
+                  number: 80
