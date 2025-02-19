@@ -15,4 +15,5 @@ public final class Utils {
     public static String getRedisKeyForUser(String userId) {
         return "user:" + userId;
     }
+
 }

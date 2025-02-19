@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.client.api.MessageListener;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.PulsarClientException;
+import org.apache.pulsar.client.api.SubscriptionType;
 import org.sockkeeper.config.SockkeeperConfiguration;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
@@ -41,29 +42,46 @@ public class RegisterResourceV4 {
     private final MetricRegistry metricRegistry;
     private final JedisPool jedisPool;
     private AtomicReference<String> topicAssigned;
+    private final String sidelineTopicName;
 
     @Inject
     public RegisterResourceV4(SockkeeperConfiguration configuration,
                               @Named("hostname")String hostname,
                               MetricRegistry metricRegistry,
                               JedisPool jedisPool,
-                              PulsarClient pulsarClient) throws PulsarClientException {
+                              PulsarClient pulsarClient,
+                              @Named("sidelineTopic") String sidelineTopicName) throws PulsarClientException {
         this.configuration = configuration;
         this.hostname = hostname;
         this.metricRegistry = metricRegistry;
         this.topicAssigned = new AtomicReference<>(Utils.getTopicNameForHost(hostname));
         this.jedisPool = jedisPool;
+        this.sidelineTopicName = sidelineTopicName;
+        try (Jedis jedis = jedisPool.getResource()) {
+            jedis.sadd("all-hosts", hostname);
+        }
+
         try {
-            MessageListener myMessageListener
+            MessageListener mainConsumer
                     = new ConsumerV4(userIdSessionMap,
                             pulsarClient,
                             metricRegistry,
                             jedisPool,
-                            hostname);
+                            hostname,
+                    sidelineTopicName);
             pulsarClient.newConsumer()
                     .topic(topicAssigned.get())
                     .subscriptionName(Utils.getSubscriptionNameForHost(hostname))
-                    .messageListener(myMessageListener)
+                    .subscriptionType(SubscriptionType.Exclusive)
+                    .messageListener(mainConsumer)
+                    .subscribe();
+
+            MessageListener sidelineConsumer = new SidelineConsumer(pulsarClient, jedisPool);
+            pulsarClient.newConsumer()
+                    .topic(sidelineTopicName)
+                    .subscriptionName("sideline-sub")
+                    .subscriptionType(SubscriptionType.Shared)
+                    .messageListener(sidelineConsumer)
                     .subscribe();
         } catch (Exception e) {
             log.error("Error in starting consumer for topic {}", topicAssigned, e.getCause());
@@ -78,7 +96,7 @@ public class RegisterResourceV4 {
         log.info("socket connection opened for: {}", userId);
         session.setMaxIdleTimeout(-1);
         try (Jedis jedis = jedisPool.getResource()) {
-            jedis.set(Utils.getRedisKeyForUser(userId), hostname);
+            jedis.setex(Utils.getRedisKeyForUser(userId), 5*60, hostname);
         }
         userIdSessionMap.put(userId, session);
         onOpen.close();
@@ -87,7 +105,9 @@ public class RegisterResourceV4 {
     @OnMessage
     public void onMessage(Session session, String message, @PathParam("userId") String userId) {
         log.info("message: {} , received on socket connection for: {}", message, userId);
-        //ignore
+        try (Jedis jedis = jedisPool.getResource()) {
+            jedis.setex(Utils.getRedisKeyForUser(userId), 5*60, hostname);
+        }
     }
 
     @OnClose

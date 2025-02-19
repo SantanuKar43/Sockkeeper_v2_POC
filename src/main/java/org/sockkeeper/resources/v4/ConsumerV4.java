@@ -20,17 +20,19 @@ public class ConsumerV4 implements MessageListener {
     private final MetricRegistry metricRegistry;
     private final JedisPool jedisPool;
     private final String hostname;
+    private final String sidelineTopic;
 
     public ConsumerV4(ConcurrentHashMap<String, Session> userIdSessionMap,
                       PulsarClient pulsarClient,
                       MetricRegistry metricRegistry,
                       JedisPool jedisPool,
-                      String hostname) {
+                      String hostname, String sidelineTopic) {
         this.userIdSessionMap = userIdSessionMap;
         this.pulsarClient = pulsarClient;
         this.metricRegistry = metricRegistry;
         this.jedisPool = jedisPool;
         this.hostname = hostname;
+        this.sidelineTopic = sidelineTopic;
     }
 
     @Override
@@ -52,27 +54,27 @@ public class ConsumerV4 implements MessageListener {
                 String userHost = jedis.get(Utils.getRedisKeyForUser(userId));
                 if (hostname.equals(userHost)) {
                     // retry, should do with exponential backoff
-                    if (Instant.now().getEpochSecond() - msg.getEventTime() > 45) {
-                        log.warn("dropping message {} for userId : {}", message, userId);
-                        consumer.acknowledge(msg);
+                    if (Instant.now().getEpochSecond() - msg.getEventTime() < 45) {
+                        log.info("user {} not online, will consume message later: {}", userId, message);
+                        consumer.reconsumeLater(msg, 15, TimeUnit.SECONDS);
+                        return;
                     }
-                    log.info("user {} not online, will consume message later: {}", userId, message);
-                    consumer.reconsumeLater(msg, 15, TimeUnit.SECONDS);
-                    return;
                 }
 
-                // Pass message to present host
+                // Pass message to sideline topic for retry
                 // Message ordering may break here.
                 // Messages should have actual timestamp when event occurred.
                 // Client UI can handle displaying messages in order based on its actual timestamp
                 log.info("passing user:{}, message:{} to present host:{}", userId, message, userHost);
-                String topic = Utils.getTopicNameForHost(userHost);
+                String topic = sidelineTopic;
                 try (Producer<byte[]> producer = pulsarClient.newProducer().topic(topic).create()) {
                     producer.newMessage()
                             .key(userId)
                             .value(message.getBytes(StandardCharsets.UTF_8))
+                            .eventTime(msg.getEventTime())
                             .send();
                 }
+                consumer.acknowledge(msg);
             }
         } catch (Exception e) {
             consumer.negativeAcknowledge(msg);

@@ -80,6 +80,13 @@ public class SockkeeperModule extends AbstractModule {
 
     @Singleton
     @Provides
+    @Named("sidelineTopic")
+    public String getSidelineTopic() throws UnknownHostException {
+        return configuration.getSidelineTopic();
+    }
+
+    @Singleton
+    @Provides
     public MetricRegistry getMetricRegistry() {
         return environment.metrics();
     }
