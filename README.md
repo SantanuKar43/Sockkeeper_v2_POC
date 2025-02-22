@@ -9,15 +9,12 @@ How to start the application
 
 ## Health Check
 ---
-
 To see your applications health enter url `http://localhost:8889/healthcheck`
 
 ---
-
 # Sockkeeper running in minikube
 
 ---
-
 Run the dependencies:
 Run kafka:
 docker run -d --name kafka -p 9092:9092 apache/kafka:3.9.0
@@ -56,11 +53,21 @@ To delete deployment:
 
 ---
 https://kubernetes.io/docs/tasks/access-application-cluster/ingress-minikube/
-To run with ingress:
-> minikube tunnel
+https://minikube.sigs.k8s.io/docs/start/?arch=%2Fmacos%2Farm64%2Fstable%2Fhomebrew#LoadBalancer
 
-Also, update /etc/hosts with entry :
-“127.0.0.1 hello-world.example”
+faced file descriptor issues with minikube tunnel
+
+~~To run with ingress:~~
+~~> minikube tunnel~~
+
+~~Also, update /etc/hosts with entry :~~
+~~“127.0.0.1 hello-world.example”~~
+
+To run and access locally:
+use kubectl port forwarding
+> kubectl port-forward svc/haproxy-service 8081:8181
+
+access on endpoint: 127.0.0.1:8081
 
 ---
 
