@@ -17,7 +17,7 @@ To see your applications health enter url `http://localhost:8889/healthcheck`
 ---
 Run the dependencies:
 Run kafka:
-docker run -d --name kafka -p 9092:9092 apache/kafka:3.9.0
+> docker run -d --name kafka -p 9092:9092 apache/kafka:3.9.0
 
 Run zookeeper:
 > docker run -d --name zookeeper \
@@ -84,7 +84,7 @@ OR just run the rebuild_image.sh script
 Test results
 ---
 Connection test:
-5k idle connections
+5k idle connections (`connection_test.py`)
 
 | NAME                     | CPU(cores) | MEMORY(bytes) |
 |--------------------------|------------|---------------|
