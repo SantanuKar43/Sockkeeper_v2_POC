@@ -8,9 +8,10 @@ public final class Utils {
         return hostname + "-topic";
     }
 
-    public static String getSubscriptionNameForHost(String hostname) {
-        return hostname + "-subscription";
+    public static String getSubscriptionName() {
+        return "sock-subscription";
     }
+
 
     public static String getRedisKeyForUser(String userId) {
         return "user:" + userId;

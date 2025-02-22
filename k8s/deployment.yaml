@@ -1,3 +1,4 @@
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -29,6 +30,7 @@ data:
 
     pulsar:
       serviceUrl: pulsar://host.docker.internal:6650
+      adminUrl: http://host.docker.internal:8080
 
     redis:
       host: host.docker.internal
@@ -79,10 +81,10 @@ spec:
               subPath: config.yml
           resources:
             requests:
-              memory: "1Gi"
+              memory: "512Mi"
               cpu: "1"
             limits:
-              memory: "2Gi"
+              memory: "1Gi"
               cpu: "2"
       volumes:
         - name: config-volume
@@ -90,24 +92,84 @@ spec:
             name: sockkeeper-config
 
 ---
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+apiVersion: v1
+kind: ConfigMap
 metadata:
-  name: sockkeeper-ingress
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-    nginx.ingress.kubernetes.io/load-balance: "least_conn"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "900"  # Increase read timeout to 15 mins
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "900"  # Increase send timeout to 15 mins
+  name: haproxy-config
+data:
+  haproxy.cfg: |
+    global
+      log stdout format raw local0
+      maxconn 50000
+    
+    defaults
+      log global
+      mode http
+      option httplog
+      option dontlognull
+      timeout connect 100000ms
+      timeout client 900000ms  # 15 min for regular HTTP
+      timeout server 900000ms  # 15 min for regular HTTP
+      timeout tunnel 86400000ms  # 24 hours for WebSocket tunnels
+    
+    frontend http_front
+      bind *:80
+      default_backend sockkeeper_back
+    
+    backend sockkeeper_back
+      balance leastconn
+      option http-server-close
+      option forwardfor
+      timeout tunnel 86400000ms  # WebSockets stay open for 24 hours
+      timeout queue 900000ms
+      timeout connect 100000ms
+      server sockkeeper1 sockkeeper-service:80 check
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: haproxy
 spec:
-  rules:
-    - host: sockkeeper.local
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: sockkeeper-service
-                port:
-                  number: 80
+  replicas: 1
+  selector:
+    matchLabels:
+      app: haproxy
+  template:
+    metadata:
+      labels:
+        app: haproxy
+    spec:
+      containers:
+        - name: haproxy
+          image: haproxy:latest
+          command: ["haproxy", "-f", "/usr/local/etc/haproxy/haproxy.cfg"]
+          volumeMounts:
+            - name: config-volume
+              mountPath: /usr/local/etc/haproxy/haproxy.cfg
+              subPath: haproxy.cfg
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: config-volume
+          configMap:
+            name: haproxy-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: haproxy-service
+spec:
+  selector:
+    app: haproxy
+  ports:
+    - protocol: TCP
+      port: 8181   # Change from 80 to avoid conflicts
+      targetPort: 80
+  type: LoadBalancer

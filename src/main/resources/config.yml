@@ -23,6 +23,7 @@ zk:
 
 pulsar:
   serviceUrl: pulsar://localhost:6650
+  adminUrl: http://localhost:8080
 
 redis:
   host: 127.0.0.1

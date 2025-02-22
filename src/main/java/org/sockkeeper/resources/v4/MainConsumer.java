@@ -13,9 +13,12 @@ import java.time.Instant;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-@Deprecated
+
+/**
+ * Copy of ConsumerV4
+ * */
 @Slf4j
-public class ConsumerV4 implements MessageListener {
+public class MainConsumer implements MessageListener {
     private final ConcurrentHashMap<String, Session> userIdSessionMap;
     private final PulsarClient pulsarClient;
     private final MetricRegistry metricRegistry;
@@ -23,7 +26,7 @@ public class ConsumerV4 implements MessageListener {
     private final String hostname;
     private final String sidelineTopic;
 
-    public ConsumerV4(ConcurrentHashMap<String, Session> userIdSessionMap,
+    public MainConsumer(ConcurrentHashMap<String, Session> userIdSessionMap,
                       PulsarClient pulsarClient,
                       MetricRegistry metricRegistry,
                       JedisPool jedisPool,
@@ -38,10 +41,10 @@ public class ConsumerV4 implements MessageListener {
 
     @Override
     public void received(Consumer consumer, Message msg) {
-        log.info("received started");
+        log.info("main consumer received started");
         Timer.Context consumeV4Time = metricRegistry.timer("ConsumeV4Time").time();
         try {
-            log.info("Message received: {}", new String(msg.getData()));
+            log.info("main consumer message received: {}", new String(msg.getData()));
             String userId = msg.getKey();
             String message = new String(msg.getData(), StandardCharsets.UTF_8);
             Session session = userIdSessionMap.get(userId);

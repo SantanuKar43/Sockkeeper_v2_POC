@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+@Deprecated
 @Slf4j
 public class BackupJob implements Runnable {
     private final PulsarClient pulsarClient;
@@ -39,7 +40,7 @@ public class BackupJob implements Runnable {
                     Consumer<byte[]> backupConsumer = pulsarClient.newConsumer()
                             .topic(topic)
                             .subscriptionType(SubscriptionType.Exclusive)
-                            .subscriptionName(Utils.getSubscriptionNameForHost(host))
+                            .subscriptionName(Utils.getSubscriptionName())
                             .batchReceivePolicy(BatchReceivePolicy. builder()
                                     .maxNumMessages(25)
                                     .timeout(10, TimeUnit.SECONDS)

@@ -11,6 +11,8 @@ import jakarta.websocket.Session;
 import jakarta.websocket.server.PathParam;
 import jakarta.websocket.server.ServerEndpoint;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.pulsar.client.admin.PulsarAdmin;
+import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.client.api.MessageListener;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.PulsarClientException;
@@ -20,6 +22,7 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -43,6 +46,7 @@ public class RegisterResourceV4 {
     private final JedisPool jedisPool;
     private AtomicReference<String> topicAssigned;
     private final String sidelineTopicName;
+    private final PulsarAdmin pulsarAdmin;
 
     @Inject
     public RegisterResourceV4(SockkeeperConfiguration configuration,
@@ -50,20 +54,21 @@ public class RegisterResourceV4 {
                               MetricRegistry metricRegistry,
                               JedisPool jedisPool,
                               PulsarClient pulsarClient,
-                              @Named("sidelineTopic") String sidelineTopicName) throws PulsarClientException {
+                              @Named("sidelineTopic") String sidelineTopicName, PulsarAdmin pulsarAdmin) throws PulsarClientException, PulsarAdminException {
         this.configuration = configuration;
         this.hostname = hostname;
         this.metricRegistry = metricRegistry;
         this.topicAssigned = new AtomicReference<>(Utils.getTopicNameForHost(hostname));
         this.jedisPool = jedisPool;
         this.sidelineTopicName = sidelineTopicName;
+        this.pulsarAdmin = pulsarAdmin;
         try (Jedis jedis = jedisPool.getResource()) {
             jedis.sadd("all-hosts", hostname);
         }
 
         try {
             MessageListener mainConsumer
-                    = new ConsumerV4(userIdSessionMap,
+                    = new MainConsumer(userIdSessionMap,
                             pulsarClient,
                             metricRegistry,
                             jedisPool,
@@ -71,14 +76,36 @@ public class RegisterResourceV4 {
                     sidelineTopicName);
             pulsarClient.newConsumer()
                     .topic(topicAssigned.get())
-                    .subscriptionName(Utils.getSubscriptionNameForHost(hostname))
-                    .subscriptionType(SubscriptionType.Exclusive)
+                    .consumerName("main-" + hostname)
+                    .subscriptionName(Utils.getSubscriptionName())
+                    .subscriptionType(SubscriptionType.Failover)
                     .messageListener(mainConsumer)
+                    .priorityLevel(0)
                     .subscribe();
+
+            List<String> allTopics = pulsarAdmin.topics().getList("public/default");
+            allTopics.remove(topicAssigned.get());
+            int i = 1;
+            for (String topic : allTopics) {
+                log.info("creating failover consumer on {}", topic);
+                if (!topic.contains("sk-node-") || topic.contains(topicAssigned.get())) {
+                    continue;
+                }
+                FailoverConsumer failoverConsumer = new FailoverConsumer(sidelineTopicName, pulsarClient);
+                pulsarClient.newConsumer()
+                        .topic(topic)
+                        .consumerName("failover-" + hostname)
+                        .subscriptionName(Utils.getSubscriptionName())
+                        .subscriptionType(SubscriptionType.Failover)
+                        .messageListener(failoverConsumer)
+                        .priorityLevel(i++)
+                        .subscribe();
+            }
 
             MessageListener sidelineConsumer = new SidelineConsumer(pulsarClient, jedisPool);
             pulsarClient.newConsumer()
                     .topic(sidelineTopicName)
+                    .consumerName("sideline-" + hostname)
                     .subscriptionName("sideline-sub")
                     .subscriptionType(SubscriptionType.Shared)
                     .messageListener(sidelineConsumer)
