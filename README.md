@@ -40,6 +40,14 @@ Go to pulsar download directory and run
 
 Run minikube:
 https://minikube.sigs.k8s.io/docs/start/?arch=%2Fmacos%2Farm64%2Fstable%2Fhomebrew
+after installing minikube configure to use 8gb memory:
+> minikube config set memory 8192
+
+enable metrics:
+> minikube addons enable metrics-server
+
+start:
+> minikube start
 
 
 Kubectl commands
@@ -53,9 +61,10 @@ To delete deployment:
 
 ---
 https://kubernetes.io/docs/tasks/access-application-cluster/ingress-minikube/
+
 https://minikube.sigs.k8s.io/docs/start/?arch=%2Fmacos%2Farm64%2Fstable%2Fhomebrew#LoadBalancer
 
-faced file descriptor issues with minikube tunnel
+**file descriptor issues with minikube tunnel**
 
 ~~To run with ingress:~~
 ~~> minikube tunnel~~
@@ -63,11 +72,11 @@ faced file descriptor issues with minikube tunnel
 ~~Also, update /etc/hosts with entry :~~
 ~~“127.0.0.1 hello-world.example”~~
 
-To run and access locally:
-use kubectl port forwarding
+To run and access locally,
+use kubectl port forwarding:
 > kubectl port-forward svc/haproxy-service 8081:8181
 
-access on endpoint: 127.0.0.1:8081
+access on endpoint:`127.0.0.1:8081`
 
 ---
 
