@@ -6,16 +6,20 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
 import java.time.Instant;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class SidelineConsumer implements MessageListener {
     private final PulsarClient pulsarClient;
     private final JedisPool jedisPool;
+    private final Map<String, Producer<byte[]>> producerPool;
 
     public SidelineConsumer(PulsarClient pulsarClient, JedisPool jedisPool) {
         this.pulsarClient = pulsarClient;
         this.jedisPool = jedisPool;
+        producerPool = new ConcurrentHashMap<>();
     }
 
     @Override
@@ -42,13 +46,19 @@ public class SidelineConsumer implements MessageListener {
 
                 log.info("passing message for user:{}, to present host:{}", userId, userHost);
                 String topic = Utils.getTopicNameForHost(userHost);
-                try (Producer<byte[]> producer = pulsarClient.newProducer().topic(topic).create()) {
-                    producer.newMessage()
+                producerPool.computeIfAbsent(topic, key -> {
+                            try {
+                                return pulsarClient.newProducer().topic(topic).create();
+                            } catch (PulsarClientException e) {
+                                throw new RuntimeException(e);
+                            }
+                        })
+                .newMessage()
                             .key(userId)
                             .value(msg.getData())
                             .eventTime(msg.getEventTime())
                             .send();
-                }
+
                 consumer.acknowledge(msg);
             }
         } catch (Exception e) {

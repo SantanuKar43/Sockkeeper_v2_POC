@@ -35,22 +35,22 @@ data:
     redis:
       host: host.docker.internal
       port: 6379
-    
+
     sideline-topic: sockkeeper-sideline
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: sockkeeper-service
+  name: sockkeeper-headless
 spec:
+  clusterIP: None
   selector:
     app: sockkeeper
   ports:
     - name: http
       port: 80
       targetPort: 8888
-  type: ClusterIP
 
 ---
 apiVersion: apps/v1
@@ -107,23 +107,38 @@ data:
       mode http
       option httplog
       option dontlognull
-      timeout connect 100000ms
-      timeout client 900000ms  # 15 min for regular HTTP
-      timeout server 900000ms  # 15 min for regular HTTP
-      timeout tunnel 86400000ms  # 24 hours for WebSocket tunnels
+      timeout connect 100s
+      timeout client 15m  # 15 min for regular HTTP
+      timeout server 15m  # 15 min for regular HTTP
+      timeout tunnel 24h  # 24 hours for WebSocket tunnels
     
     frontend http_front
       bind *:80
       default_backend sockkeeper_back
     
+    resolvers kube-dns
+      nameserver dns1 kube-dns.kube-system.svc.cluster.local:53
+      hold valid 5s
+      resolve_retries 3
+    
     backend sockkeeper_back
       balance leastconn
       option http-server-close
       option forwardfor
-      timeout tunnel 86400000ms  # WebSockets stay open for 24 hours
-      timeout queue 900000ms
-      timeout connect 100000ms
-      server sockkeeper1 sockkeeper-service:80 check
+      timeout tunnel 24h  # WebSockets stay open for 24 hours
+      timeout queue 15m
+      timeout connect 100s
+      server sk-node-0 sk-node-0.sockkeeper-headless.default.svc.cluster.local:8888 check resolvers kube-dns resolve-prefer ipv4
+      server sk-node-1 sk-node-1.sockkeeper-headless.default.svc.cluster.local:8888 check resolvers kube-dns resolve-prefer ipv4
+      server sk-node-2 sk-node-2.sockkeeper-headless.default.svc.cluster.local:8888 check resolvers kube-dns resolve-prefer ipv4
+    
+    frontend stats
+      mode http
+      bind *:8404
+      stats enable
+      stats uri /stats
+      stats refresh 5s
+      stats admin if LOCALHOST
 
 ---
 apiVersion: apps/v1
@@ -169,7 +184,12 @@ spec:
   selector:
     app: haproxy
   ports:
-    - protocol: TCP
+    - name: elb
+      protocol: TCP
       port: 8181   # Change from 80 to avoid conflicts
       targetPort: 80
+    - name: stat
+      protocol: TCP
+      port: 8404
+      targetPort: 8404
   type: LoadBalancer

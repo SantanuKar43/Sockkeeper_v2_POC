@@ -123,7 +123,7 @@ public class RegisterResourceV4 {
         log.info("socket connection opened for: {}", userId);
         session.setMaxIdleTimeout(-1);
         try (Jedis jedis = jedisPool.getResource()) {
-            jedis.setex(Utils.getRedisKeyForUser(userId), 5*60, hostname);
+            jedis.setex(Utils.getRedisKeyForUser(userId), 60, hostname);
         }
         userIdSessionMap.put(userId, session);
         onOpen.close();
@@ -133,7 +133,7 @@ public class RegisterResourceV4 {
     public void onMessage(Session session, String message, @PathParam("userId") String userId) {
         log.info("message: {} , received on socket connection for: {}", message, userId);
         try (Jedis jedis = jedisPool.getResource()) {
-            jedis.setex(Utils.getRedisKeyForUser(userId), 5*60, hostname);
+            jedis.setex(Utils.getRedisKeyForUser(userId), 60, hostname);
         }
     }
 

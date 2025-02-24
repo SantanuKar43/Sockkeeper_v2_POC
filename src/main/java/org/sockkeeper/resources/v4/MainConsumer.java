@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Copy of ConsumerV4
- * */
+ */
 @Slf4j
 public class MainConsumer implements MessageListener {
     private final ConcurrentHashMap<String, Session> userIdSessionMap;
@@ -25,18 +25,20 @@ public class MainConsumer implements MessageListener {
     private final JedisPool jedisPool;
     private final String hostname;
     private final String sidelineTopic;
+    private final Producer<byte[]> sidelineProducer;
 
     public MainConsumer(ConcurrentHashMap<String, Session> userIdSessionMap,
-                      PulsarClient pulsarClient,
-                      MetricRegistry metricRegistry,
-                      JedisPool jedisPool,
-                      String hostname, String sidelineTopic) {
+                        PulsarClient pulsarClient,
+                        MetricRegistry metricRegistry,
+                        JedisPool jedisPool,
+                        String hostname, String sidelineTopic) throws PulsarClientException {
         this.userIdSessionMap = userIdSessionMap;
         this.pulsarClient = pulsarClient;
         this.metricRegistry = metricRegistry;
         this.jedisPool = jedisPool;
         this.hostname = hostname;
         this.sidelineTopic = sidelineTopic;
+        sidelineProducer = pulsarClient.newProducer().topic(sidelineTopic).create();
     }
 
     @Override
@@ -70,14 +72,13 @@ public class MainConsumer implements MessageListener {
                 // Messages should have actual timestamp when event occurred.
                 // Client UI can handle displaying messages in order based on its actual timestamp
                 log.info("passing user:{}, message:{} to present host:{}", userId, message, userHost);
-                String topic = sidelineTopic;
-                try (Producer<byte[]> producer = pulsarClient.newProducer().topic(topic).create()) {
-                    producer.newMessage()
-                            .key(userId)
-                            .value(message.getBytes(StandardCharsets.UTF_8))
-                            .eventTime(msg.getEventTime())
-                            .send();
-                }
+
+                sidelineProducer.newMessage()
+                        .key(userId)
+                        .value(message.getBytes(StandardCharsets.UTF_8))
+                        .eventTime(msg.getEventTime())
+                        .send();
+
                 consumer.acknowledge(msg);
             }
         } catch (Exception e) {
