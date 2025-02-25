@@ -20,11 +20,9 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class MainConsumer implements MessageListener {
     private final ConcurrentHashMap<String, Session> userIdSessionMap;
-    private final PulsarClient pulsarClient;
     private final MetricRegistry metricRegistry;
     private final JedisPool jedisPool;
     private final String hostname;
-    private final String sidelineTopic;
     private final Producer<byte[]> sidelineProducer;
 
     public MainConsumer(ConcurrentHashMap<String, Session> userIdSessionMap,
@@ -33,11 +31,9 @@ public class MainConsumer implements MessageListener {
                         JedisPool jedisPool,
                         String hostname, String sidelineTopic) throws PulsarClientException {
         this.userIdSessionMap = userIdSessionMap;
-        this.pulsarClient = pulsarClient;
         this.metricRegistry = metricRegistry;
         this.jedisPool = jedisPool;
         this.hostname = hostname;
-        this.sidelineTopic = sidelineTopic;
         sidelineProducer = pulsarClient.newProducer().topic(sidelineTopic).create();
     }
 

@@ -13,9 +13,25 @@ public final class Utils {
         return "sock-subscription";
     }
 
-
     public static String getRedisKeyForUser(String userId) {
         return "user:" + userId;
     }
+
+    public static String getKeyForHostLiveness(String hostname) {
+        return "host:" + hostname;
+    }
+
+    public static String getMainConsumerName(String hostname) {
+        return "main-" + hostname;
+    }
+
+    public static String getFailoverConsumerName(String hostname) {
+        return "failover-" + hostname;
+    }
+
+    public static String getSidelineConsumerName(String hostname) {
+        return "sideline-" + hostname;
+    }
+
 
 }

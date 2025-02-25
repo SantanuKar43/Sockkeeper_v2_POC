@@ -44,6 +44,18 @@ public class SidelineConsumer implements MessageListener {
                     return;
                 }
 
+                String hostLiveness = jedis.get(Utils.getKeyForHostLiveness(userHost));
+                if (hostLiveness == null) {
+                    log.info("Host not live for user {}", userId);
+                    if (Instant.now().getEpochSecond() - msg.getEventTime() > 5 * 60) {
+                        log.warn("couldn't find a host, dropping message {} for userId : {}", msg, userId);
+                        consumer.acknowledge(msg);
+                        return;
+                    }
+                    consumer.reconsumeLater(msg, 15, TimeUnit.SECONDS);
+                    return;
+                }
+
                 log.info("passing message for user:{}, to present host:{}", userId, userHost);
                 String topic = Utils.getTopicNameForHost(userHost);
                 producerPool.computeIfAbsent(topic, key -> {

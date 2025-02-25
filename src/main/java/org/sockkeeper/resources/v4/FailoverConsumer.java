@@ -7,14 +7,10 @@ import java.nio.charset.StandardCharsets;
 
 @Slf4j
 public class FailoverConsumer implements MessageListener {
-    private final String sidelineTopic;
-    private final PulsarClient pulsarClient;
     private final Producer<byte[]> sidelineProducer;
 
     public FailoverConsumer(String sidelineTopic,
                             PulsarClient pulsarClient) throws PulsarClientException {
-        this.sidelineTopic = sidelineTopic;
-        this.pulsarClient = pulsarClient;
         sidelineProducer = pulsarClient.newProducer().topic(sidelineTopic).create();
     }
 
@@ -37,7 +33,5 @@ public class FailoverConsumer implements MessageListener {
         } catch (Exception e) {
             consumer.negativeAcknowledge(msg);
         }
-
-
     }
 }
