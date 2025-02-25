@@ -102,6 +102,9 @@ public class RegisterResourceV4 {
         Timer.Context onClose = metricRegistry.timer("onClose").time();
         log.info("socket connection closed for: {}", userId);
         userIdSessionMap.remove(userId);
+        try (Jedis jedis = jedisPool.getResource()) {
+            jedis.del(Utils.getRedisKeyForUser(userId));
+        }
         onClose.close();
     }
 }
