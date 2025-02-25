@@ -9,7 +9,10 @@ import jakarta.websocket.server.PathParam;
 import jakarta.websocket.server.ServerEndpoint;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.recipes.cache.*;
+import org.apache.curator.framework.recipes.cache.ChildData;
+import org.apache.curator.framework.recipes.cache.CuratorCache;
+import org.apache.curator.framework.recipes.cache.CuratorCacheListener;
+import org.apache.curator.framework.recipes.cache.PathChildrenCacheEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.zookeeper.CreateMode;
@@ -30,7 +33,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Dynamic topic allocation to user on connection and de-allocation on disconnect.
  * Complex co-ordination logic involving distributed locks.
  * Too many topics
- * */
+ */
 @Slf4j
 @ServerEndpoint("/v1/register/{userId}")
 public class RegisterResource implements CuratorCacheListener {

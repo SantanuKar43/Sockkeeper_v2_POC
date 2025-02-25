@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * 1 topic per user, identified by userId - users might leave fk or new users might join which will require topic creation/deletion.
  * Additional solve needed to manage users.
  * too many topics
- * */
+ */
 @Slf4j
 @ServerEndpoint("/v2/register/{userId}")
 public class RegisterResourceV2 {

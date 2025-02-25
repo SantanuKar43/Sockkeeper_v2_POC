@@ -2,7 +2,6 @@ package org.sockkeeper.resources.v3;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
-import com.codahale.metrics.annotation.Timed;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import jakarta.websocket.OnClose;
@@ -39,7 +38,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * Prone to message loss during race condition between publish and user disconnection,
  * complex retry logic required to handle intermittent user disconnection.
  * Ephemeral nodes can get deleted due to network issues, requires complex heartbeat mechanisms to solve.
- * */
+ */
 @Slf4j
 @ServerEndpoint("/v3/register/{userId}")
 public class RegisterResourceV3 implements CuratorCacheListener {
@@ -54,7 +53,7 @@ public class RegisterResourceV3 implements CuratorCacheListener {
     @Inject
     public RegisterResourceV3(SockkeeperConfiguration configuration,
                               CuratorFramework curator,
-                              @Named("hostname")String hostname,
+                              @Named("hostname") String hostname,
                               MetricRegistry metricRegistry) {
         this.configuration = configuration;
         this.curator = curator;

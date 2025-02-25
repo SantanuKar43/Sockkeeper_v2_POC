@@ -20,7 +20,6 @@ import org.sockkeeper.resources.v4.PublishResourceV4;
 import org.sockkeeper.resources.v4.RegisterResourceV4;
 
 
-
 public class SockkeeperApplication extends Application<SockkeeperConfiguration> {
 
     public static void main(final String[] args) throws Exception {

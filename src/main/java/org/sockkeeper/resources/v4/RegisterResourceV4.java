@@ -34,7 +34,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * Requires stable ordered hostnames,
  * easily achievable by k8s <a href="https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/">StatefulSets</a>
  * Prone to out of order messages during disconnects, UI to handle ordering.
- * */
+ */
 @Slf4j
 @ServerEndpoint("/v4/register/{userId}")
 public class RegisterResourceV4 {
@@ -50,7 +50,7 @@ public class RegisterResourceV4 {
 
     @Inject
     public RegisterResourceV4(SockkeeperConfiguration configuration,
-                              @Named("hostname")String hostname,
+                              @Named("hostname") String hostname,
                               MetricRegistry metricRegistry,
                               JedisPool jedisPool,
                               PulsarClient pulsarClient,
@@ -69,10 +69,10 @@ public class RegisterResourceV4 {
         try {
             MessageListener mainConsumer
                     = new MainConsumer(userIdSessionMap,
-                            pulsarClient,
-                            metricRegistry,
-                            jedisPool,
-                            hostname,
+                    pulsarClient,
+                    metricRegistry,
+                    jedisPool,
+                    hostname,
                     sidelineTopicName);
             pulsarClient.newConsumer()
                     .topic(topicAssigned.get())

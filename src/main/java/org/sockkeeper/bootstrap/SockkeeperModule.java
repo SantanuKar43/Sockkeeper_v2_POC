@@ -21,7 +21,6 @@ import redis.clients.jedis.JedisPool;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Properties;
-import java.util.concurrent.Executors;
 
 public class SockkeeperModule extends AbstractModule {
 
@@ -104,6 +103,7 @@ public class SockkeeperModule extends AbstractModule {
         return PulsarClient.builder()
                 .serviceUrl(configuration.getPulsar().getServiceUrl())
                 .listenerThreads(Runtime.getRuntime().availableProcessors())
+                .ioThreads(Runtime.getRuntime().availableProcessors())
                 .build();
     }
 

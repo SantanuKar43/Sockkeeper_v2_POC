@@ -35,7 +35,7 @@ public class SidelineConsumer implements MessageListener {
             try (Jedis jedis = jedisPool.getResource()) {
                 String userHost = jedis.get(Utils.getRedisKeyForUser(userId));
                 if (userHost == null || userHost.isEmpty()) {
-                    if (Instant.now().getEpochSecond() - msg.getEventTime() > 5*60) {
+                    if (Instant.now().getEpochSecond() - msg.getEventTime() > 5 * 60) {
                         log.warn("couldn't find a host, dropping message {} for userId : {}", msg, userId);
                         consumer.acknowledge(msg);
                         return;
@@ -53,11 +53,11 @@ public class SidelineConsumer implements MessageListener {
                                 throw new RuntimeException(e);
                             }
                         })
-                .newMessage()
-                            .key(userId)
-                            .value(msg.getData())
-                            .eventTime(msg.getEventTime())
-                            .send();
+                        .newMessage()
+                        .key(userId)
+                        .value(msg.getData())
+                        .eventTime(msg.getEventTime())
+                        .send();
 
                 consumer.acknowledge(msg);
             }

@@ -2,7 +2,8 @@ package org.sockkeeper.resources.v4;
 
 public final class Utils {
 
-    private Utils() {}
+    private Utils() {
+    }
 
     public static String getTopicNameForHost(String hostname) {
         return hostname + "-topic";

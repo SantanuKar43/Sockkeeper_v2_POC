@@ -56,7 +56,7 @@ public class PublishResourceV4 {
                         .key(userId)
                         .value(message.getBytes(StandardCharsets.UTF_8))
                         .eventTime(Instant.now().getEpochSecond())
-                        .send();
+                        .sendAsync();
 
             } catch (Exception e) {
                 log.error("Exception occurred in publish", e);

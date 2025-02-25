@@ -41,7 +41,7 @@ public class BackupJob implements Runnable {
                             .topic(topic)
                             .subscriptionType(SubscriptionType.Exclusive)
                             .subscriptionName(Utils.getSubscriptionName())
-                            .batchReceivePolicy(BatchReceivePolicy. builder()
+                            .batchReceivePolicy(BatchReceivePolicy.builder()
                                     .maxNumMessages(25)
                                     .timeout(10, TimeUnit.SECONDS)
                                     .build())
@@ -49,7 +49,7 @@ public class BackupJob implements Runnable {
 
                     log.info("created backup consumer for topic {}", topic);
 
-                    Instant twoMinFromNow = Instant.now().plusSeconds(2*60);
+                    Instant twoMinFromNow = Instant.now().plusSeconds(2 * 60);
                     while (Instant.now().isBefore(twoMinFromNow)) {
                         Messages<byte[]> messages = backupConsumer.batchReceive();
                         for (Message<byte[]> msg : messages) {
