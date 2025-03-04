@@ -68,7 +68,7 @@ public class SidelineConsumer implements MessageListener {
                         .newMessage()
                         .key(userId)
                         .value(msg.getData())
-                        .eventTime(msg.getEventTime())
+                        .eventTime(msg.getEventTime() == 0 ? Instant.now().getEpochSecond() : msg.getEventTime()) // eventTime is reset on reconsumeLater. This will not be problem in prod as the event time will be part of the message payload
                         .send();
 
                 consumer.acknowledge(msg);

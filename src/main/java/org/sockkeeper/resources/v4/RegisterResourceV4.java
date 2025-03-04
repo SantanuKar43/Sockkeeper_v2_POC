@@ -68,6 +68,7 @@ public class RegisterResourceV4 {
                     .subscriptionType(SubscriptionType.Failover)
                     .messageListener(mainConsumer)
                     .priorityLevel(0)
+                    .enableRetry(true)
                     .subscribe();
 
         } catch (Exception e) {

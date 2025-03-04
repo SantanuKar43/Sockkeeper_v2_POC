@@ -90,6 +90,7 @@ public class SockkeeperApplication extends Application<SockkeeperConfiguration> 
                 .subscriptionName(Utils.getSubscriptionName())
                 .subscriptionType(SubscriptionType.Shared)
                 .messageListener(sidelineConsumer)
+                .enableRetry(true)
                 .subscribe();
     }
 
