@@ -1,31 +1,36 @@
-import asyncio
-import requests
-import json
-import random
 import time
 import signal
-from concurrent.futures import ThreadPoolExecutor
+import random
+import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import numpy as np
 
 # Configurations
-BASE_URL = "http://localhost:8081"  # Change as needed
-NUM_USERS = 4000  # Random selection among 100 users
+BASE_URL = "http://localhost:8081"
+NUM_USERS = 100
 PUBLISH_RATE = 200  # Messages per second
+MAX_WORKERS = 200   # Allow enough workers for full rate
 
 # Metrics
 latencies = []
 total_messages = 0
 running = True
+executor = None  # Global executor to shut down on Ctrl+C
 
 # Signal handler to stop publishing gracefully
 def signal_handler(sig, frame):
-    global running
-    running = False
+    global running, executor
     print("\nStopping load test...")
+    running = False  # Stop new tasks
+    if executor:
+        executor.shutdown(wait=False)  # Force shutdown immediately
 
 def publish_message(user_id):
     """Publishes messages via HTTP."""
     global total_messages
+    if not running:  # Skip execution if stopping
+        return
+
     url = f"{BASE_URL}/v4/publish/{user_id}"
     message = f"{user_id}:{random.randint(1, 100)}:{time.time() * 1000}"
 
@@ -43,16 +48,31 @@ def publish_message(user_id):
         total_messages += 1
 
 def run_http_publishers():
-    with ThreadPoolExecutor(max_workers=100) as executor:
+    """Runs the publisher at a fixed rate of 200 messages/sec."""
+    global executor
+    executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
+
+    try:
         while running:
             start_time = time.time()
+
+            # Submit exactly 200 requests
             futures = [executor.submit(publish_message, random.randint(0, NUM_USERS - 1)) for _ in range(PUBLISH_RATE)]
 
-            # Wait for the next batch while maintaining the publish rate
+            # Wait for all requests to complete (or exit early if stopping)
+            for future in as_completed(futures):
+                if not running:
+                    break  # Stop waiting if we received Ctrl+C
+
+            # Ensure 200 requests per second
             elapsed_time = time.time() - start_time
             sleep_time = max(0, 1 - elapsed_time)
             time.sleep(sleep_time)
-        executor.shutdown(wait=False)
+
+    except KeyboardInterrupt:
+        print("\nReceived Ctrl+C. Shutting down immediately.")
+    finally:
+        executor.shutdown(wait=False)  # Force shutdown
 
 if __name__ == "__main__":
     print("Starting Load Test... Press Ctrl+C to stop.")
