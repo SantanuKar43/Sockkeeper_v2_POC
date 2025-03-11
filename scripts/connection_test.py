@@ -66,10 +66,12 @@ async def create_connection(user_id):
                     return_when=asyncio.FIRST_COMPLETED
                 )
 
-                # If the disconnect timer completes, disconnect and restart
-                if disconnect_timer in done:
-                    print(f"User {user_id} timed out after {DISCONNECT_TIME} seconds.")
-                    break  # Exit loop to reconnect
+                # Cancel remaining tasks
+                for task in pending:
+                    task.cancel()
+
+                print(f"User {user_id} disconnected. Reconnecting in {RECONNECT_DELAY} seconds...")
+
 
         except websockets.exceptions.ConnectionClosed:
             print(f"User {user_id} disconnected unexpectedly. Reconnecting...")

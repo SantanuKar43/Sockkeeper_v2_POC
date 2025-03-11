@@ -74,9 +74,11 @@ https://minikube.sigs.k8s.io/docs/start/?arch=%2Fmacos%2Farm64%2Fstable%2Fhomebr
 
 To run and access locally,
 use kubectl port forwarding:
-> kubectl port-forward svc/haproxy-service 8081:8181
+> kubectl port-forward svc/haproxy-service 8081:8181 8404:8404
 
 access on endpoint:`127.0.0.1:8081`
+
+view haproxy stats: `localhost:8404/stats`
 
 ---
 
