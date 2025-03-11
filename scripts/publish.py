@@ -9,8 +9,8 @@ import numpy as np
 
 # Configurations
 BASE_URL = "http://localhost:8081"  # Change as needed
-NUM_USERS = 100  # Random selection among 100 users
-PUBLISH_RATE = 600  # Messages per second
+NUM_USERS = 4000  # Random selection among 100 users
+PUBLISH_RATE = 200  # Messages per second
 
 # Metrics
 latencies = []
