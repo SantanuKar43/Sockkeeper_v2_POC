@@ -1,0 +1,178 @@
+# Evaluate NATS as a replacement for sockkeeper
+# By default, NATS is a fire-and-forget pub/sub system.
+# This means that if a message is published on a subject (like "test") and no subscribers are connected at that time,
+# the message is simply dropped—it is not stored.
+# Consequently, a new subscriber joining later will not receive messages that were published before it started listening.
+# With jetstream, NATS behaves like Kafka.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nats-config
+  labels:
+    app: nats
+data:
+  nats-server.conf: |
+    # NATS Server Configuration
+    port: 4222
+    http_port: 8222
+
+    cluster {
+      name: "nats-cluster"
+      listen: "0.0.0.0:6222"
+    
+      # Routes using the headless service DNS names
+      routes = [
+        nats-route://nats-0.nats-headless.default.svc.cluster.local:6222,
+        nats-route://nats-1.nats-headless.default.svc.cluster.local:6222,
+        nats-route://nats-2.nats-headless.default.svc.cluster.local:6222
+      ]
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nats-headless
+  labels:
+    app: nats
+spec:
+  clusterIP: None
+  ports:
+    - port: 4222
+      name: client
+    - port: 6222
+      name: cluster
+    - port: 8222
+      name: monitoring
+  selector:
+    app: nats
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nats
+  labels:
+    app: nats
+spec:
+  serviceName: nats-headless
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nats
+  template:
+    metadata:
+      labels:
+        app: nats
+    spec:
+      containers:
+        - name: nats
+          image: nats:latest
+          ports:
+            - containerPort: 4222
+              name: client
+            - containerPort: 6222
+              name: cluster
+            - containerPort: 8222
+              name: monitoring
+          volumeMounts:
+            - name: nats-config-volume
+              mountPath: /etc/nats
+          args: ["-c", "/etc/nats/nats-server.conf"]
+      volumes:
+        - name: nats-config-volume
+          configMap:
+            name: nats-config
+  volumeClaimTemplates: []
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: haproxy-nats-config
+  labels:
+    app: haproxy-nats
+data:
+  haproxy.cfg: |
+    global
+      log stdout format raw local0
+      maxconn 10000
+
+    defaults
+      log global
+      mode tcp
+      option tcplog
+      timeout connect 100s
+      timeout client 15m
+      timeout server 15m
+      timeout tunnel 24h
+
+    # Frontend that listens for client connections on port 4222
+    frontend nats_front
+      bind *:4222
+      default_backend nats_back
+
+    # Backend with all NATS server endpoints from the headless service
+    backend nats_back
+      balance roundrobin
+      option tcp-check
+      server nats-0 nats-0.nats-headless.default.svc.cluster.local:4222 check
+      server nats-1 nats-1.nats-headless.default.svc.cluster.local:4222 check
+      server nats-2 nats-2.nats-headless.default.svc.cluster.local:4222 check
+
+    frontend stats
+      mode http
+      bind *:8404
+      stats enable
+      stats uri /stats
+      stats refresh 10s
+      stats admin if LOCALHOST
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: haproxy-nats
+  labels:
+    app: haproxy-nats
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: haproxy-nats
+  template:
+    metadata:
+      labels:
+        app: haproxy-nats
+    spec:
+      containers:
+        - name: haproxy
+          image: haproxy:latest
+          ports:
+            - containerPort: 4222
+              name: nats
+          volumeMounts:
+            - name: haproxy-config-volume
+              mountPath: /usr/local/etc/haproxy/haproxy.cfg
+              subPath: haproxy.cfg
+      volumes:
+        - name: haproxy-config-volume
+          configMap:
+            name: haproxy-nats-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: haproxy-nats-service
+  labels:
+    app: haproxy-nats
+spec:
+  type: LoadBalancer
+  selector:
+    app: haproxy-nats
+  ports:
+    - name: nats
+      protocol: TCP
+      port: 4222
+      targetPort: 4222
+    - name: stats
+      protocol: TCP
+      port: 8404
+      targetPort: 8404
