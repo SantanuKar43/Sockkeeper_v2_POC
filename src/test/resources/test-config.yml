@@ -1,0 +1,32 @@
+logging:
+  level: INFO
+  loggers:
+    sockkeeper: INFO
+
+server:
+  applicationConnectors:
+    - type: http
+      port: 8888
+  adminConnectors:
+    - type: http
+      port: 8889
+
+kafka:
+  servers: 127.0.0.1:9092
+
+zk:
+  connectionString: 127.0.0.1:2181
+  connectionTimeout: 15000
+  sessionTimeout: 1000
+  retryBaseSleepTime: 10000
+  maxRetry: 3
+
+pulsar:
+  serviceUrl: pulsar://localhost:6650
+  adminUrl: http://localhost:8080
+
+redis:
+  host: 127.0.0.1
+  port: 6379
+
+sideline-topic: sockkeeper-sideline
