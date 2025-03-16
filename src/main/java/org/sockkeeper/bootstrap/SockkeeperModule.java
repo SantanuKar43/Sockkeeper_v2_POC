@@ -7,6 +7,7 @@ import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import io.dropwizard.core.setup.Environment;
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
@@ -16,6 +17,7 @@ import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.PulsarClientException;
 import org.sockkeeper.config.SockkeeperConfiguration;
+import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
 import java.net.InetAddress;
@@ -94,7 +96,14 @@ public class SockkeeperModule extends AbstractModule {
     @Singleton
     @Provides
     public JedisPool getJedisPool() {
-        return new JedisPool(configuration.getRedis().getHost(), configuration.getRedis().getPort());
+        GenericObjectPoolConfig<Jedis> poolConfig = new GenericObjectPoolConfig<>();
+        poolConfig.setMaxIdle(20);
+        poolConfig.setMinIdle(10);
+        poolConfig.setTestWhileIdle(true);
+        poolConfig.setTestOnBorrow(true);
+        return new JedisPool(poolConfig,
+                configuration.getRedis().getHost(),
+                configuration.getRedis().getPort());
     }
 
     @Singleton
