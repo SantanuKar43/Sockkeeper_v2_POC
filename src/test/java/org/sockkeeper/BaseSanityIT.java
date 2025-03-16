@@ -1,4 +1,4 @@
-package integration;
+package org.sockkeeper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -27,12 +27,11 @@ import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.sockkeeper.SockkeeperApplication;
 import org.sockkeeper.config.SockkeeperConfiguration;
 import org.testcontainers.containers.PulsarContainer;
 import org.testcontainers.utility.DockerImageName;
 
-public class IntegrationTest {
+public class BaseSanityIT {
 
     private static DropwizardAppExtension<SockkeeperConfiguration> sockkeeperApp;
     private static TestingServer zkServer;
