@@ -21,7 +21,8 @@ import org.eclipse.jetty.websocket.jakarta.server.config.JakartaWebSocketServlet
 import org.sockkeeper.bootstrap.SockkeeperModule;
 import org.sockkeeper.bootstrap.WebSocketConfigurator;
 import org.sockkeeper.config.SockkeeperConfiguration;
-import org.sockkeeper.health.Basic;
+import org.sockkeeper.health.BasicHealth;
+import org.sockkeeper.health.RedisHealth;
 import org.sockkeeper.resources.v4.*;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
@@ -54,8 +55,10 @@ public class SockkeeperApplication extends Application<SockkeeperConfiguration> 
     public void run(final SockkeeperConfiguration configuration,
                     final Environment environment) throws PulsarClientException, PulsarAdminException {
         Injector injector = Guice.createInjector(new SockkeeperModule(configuration, environment));
-        Basic basicHealthCheck = injector.getInstance(Basic.class);
-        environment.healthChecks().register("basic", basicHealthCheck);
+        BasicHealth basicHealth = injector.getInstance(BasicHealth.class);
+        environment.healthChecks().register("basic", basicHealth);
+        RedisHealth redisHealth = injector.getInstance(RedisHealth.class);
+        environment.healthChecks().register("redis", redisHealth);
 //        environment.jersey().register(injector.getInstance(PublishResource.class));
         environment.jersey().register(injector.getInstance(PublishResourceV4.class));
         String hostname = injector.getInstance(Key.get(String.class, Names.named("hostname")));
@@ -77,14 +80,14 @@ public class SockkeeperApplication extends Application<SockkeeperConfiguration> 
         JedisPool jedisPool = injector.getInstance(JedisPool.class);
         String sidelineTopic = injector.getInstance(Key.get(String.class, Names.named("sidelineTopic")));
 
-        startSidelineConsumer(pulsarClient, jedisPool, sidelineTopic, hostname, basicHealthCheck);
-        startFailoverConsumers(hostname, injector, sidelineTopic, pulsarClient, basicHealthCheck);
-        startLivenessJob(jedisPool, hostname, basicHealthCheck);
+        startSidelineConsumer(pulsarClient, jedisPool, sidelineTopic, hostname, basicHealth);
+        startFailoverConsumers(hostname, injector, sidelineTopic, pulsarClient, basicHealth);
+        startLivenessJob(jedisPool, hostname, basicHealth);
 
     }
 
     private static void startSidelineConsumer(PulsarClient pulsarClient, JedisPool jedisPool, String sidelineTopic, String hostname,
-                                              Basic basicHealthCheck) throws PulsarClientException {
+                                              BasicHealth basicHealth) throws PulsarClientException {
         MessageListener sidelineConsumer = new SidelineConsumer(pulsarClient, jedisPool);
         pulsarClient.newConsumer()
                 .topic(sidelineTopic)
@@ -94,11 +97,11 @@ public class SockkeeperApplication extends Application<SockkeeperConfiguration> 
                 .messageListener(sidelineConsumer)
                 .enableRetry(true)
                 .subscribe();
-        basicHealthCheck.markSidelineConsumerStarted();
+        basicHealth.markSidelineConsumerStarted();
     }
 
     private static void startFailoverConsumers(String hostname, Injector injector, String sidelineTopic, PulsarClient pulsarClient,
-                                               Basic basicHealthCheck) throws PulsarAdminException, PulsarClientException {
+                                               BasicHealth basicHealth) throws PulsarAdminException, PulsarClientException {
         String topicAssigned = Utils.getTopicNameForHost(hostname);
         PulsarAdmin pulsarAdmin = injector.getInstance(PulsarAdmin.class);
         List<String> allTopics = pulsarAdmin.topics().getList("public/default");
@@ -119,16 +122,19 @@ public class SockkeeperApplication extends Application<SockkeeperConfiguration> 
                     .priorityLevel(i++)
                     .subscribe();
         }
-        basicHealthCheck.markFailoverConsumerStarted();
+        basicHealth.markFailoverConsumerStarted();
     }
 
-    private void startLivenessJob(JedisPool jedisPool, String hostname, Basic basicHealthCheck) {
+    private void startLivenessJob(JedisPool jedisPool, String hostname, BasicHealth basicHealth) {
         executorService.scheduleAtFixedRate(() -> {
             try (Jedis jedis = jedisPool.getResource()) {
-                jedis.setex(Utils.getKeyForHostLiveness(hostname), 15, hostname);
+                jedis.setex(Utils.getKeyForHostLiveness(hostname), 5, hostname);
+                basicHealth.markLivenessJobStarted(true);
+            } catch (Exception e) {
+                log.error("error occurred in liveness job", e);
+                basicHealth.markLivenessJobStarted(false);
             }
-            basicHealthCheck.markLivenessJobStarted();
-        }, 5, 10, TimeUnit.SECONDS);
+        }, 2, 2, TimeUnit.SECONDS);
     }
 
 }

@@ -9,9 +9,9 @@ import sys
 WEBSOCKET_URL = "ws://127.0.0.1:8081/v4/register"
 MAX_USERS = 100  # Maximum number of connections
 INTERVAL = 0.05  # Time interval between new connections (in seconds)
-RECONNECT_DELAY = 10  # Time before attempting reconnection (in seconds)
+RECONNECT_DELAY = 30  # Time before attempting reconnection (in seconds)
 DISCONNECT_TIME = 600  # Disconnect every 10 minutes (server or client-side)
-PING_INTERVAL = 50  # Send a "ping" message every 50 seconds
+PING_INTERVAL = 20  # Send a "ping" message every 10 seconds
 
 latency_metrics = []  # Store latencies globally
 running_tasks = []  # Store active tasks for cleanup

@@ -97,7 +97,7 @@ public class RegisterResourceV4 {
     public void onMessage(Session session, String message, @PathParam("userId") String userId) {
         log.info("message: {} , received on socket connection for: {}", message, userId);
         try (Jedis jedis = jedisPool.getResource()) {
-            jedis.setex(Utils.getRedisKeyForUser(userId), 60, hostname);
+            jedis.setex(Utils.getRedisKeyForUser(userId), 30, hostname);
         } catch (Exception e) {
             log.error("Error occurred on onMessage", e);
             throw e;

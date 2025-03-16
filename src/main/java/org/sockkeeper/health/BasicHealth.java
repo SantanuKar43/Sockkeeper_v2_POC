@@ -5,13 +5,13 @@ import com.google.inject.Singleton;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Singleton
-public class Basic extends HealthCheck {
+public class BasicHealth extends HealthCheck {
 
     private final AtomicBoolean isSidelineConsumerStarted;
     private final AtomicBoolean isFailoverConsumerStarted;
     private final AtomicBoolean isLivenessJobStarted;
 
-    public Basic() {
+    public BasicHealth() {
         this.isSidelineConsumerStarted = new AtomicBoolean(false);
         this.isFailoverConsumerStarted = new AtomicBoolean(false);;
         this.isLivenessJobStarted = new AtomicBoolean(false);;
@@ -39,7 +39,7 @@ public class Basic extends HealthCheck {
         isFailoverConsumerStarted.set(true);
     }
 
-    public void markLivenessJobStarted() {
-        isLivenessJobStarted.set(true);
+    public void markLivenessJobStarted(boolean started) {
+        isLivenessJobStarted.set(started);
     }
 }
