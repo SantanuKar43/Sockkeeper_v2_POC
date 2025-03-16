@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
+@Deprecated
 public class Consumer implements Runnable {
 
     private final KafkaConsumer<String, String> kafkaConsumer;
