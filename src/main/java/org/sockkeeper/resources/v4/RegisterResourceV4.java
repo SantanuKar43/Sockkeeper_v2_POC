@@ -85,6 +85,9 @@ public class RegisterResourceV4 {
         session.setMaxIdleTimeout(-1);
         try (Jedis jedis = jedisPool.getResource()) {
             jedis.setex(Utils.getRedisKeyForUser(userId), 60, hostname);
+        } catch (Exception e) {
+            log.error("Error occurred on onOpen", e);
+            throw e;
         }
         userIdSessionMap.put(userId, session);
         onOpen.close();
@@ -95,6 +98,9 @@ public class RegisterResourceV4 {
         log.info("message: {} , received on socket connection for: {}", message, userId);
         try (Jedis jedis = jedisPool.getResource()) {
             jedis.setex(Utils.getRedisKeyForUser(userId), 60, hostname);
+        } catch (Exception e) {
+            log.error("Error occurred on onMessage", e);
+            throw e;
         }
     }
 
@@ -105,6 +111,9 @@ public class RegisterResourceV4 {
         userIdSessionMap.remove(userId);
         try (Jedis jedis = jedisPool.getResource()) {
             jedis.del(Utils.getRedisKeyForUser(userId));
+        } catch (Exception e) {
+            log.error("Error occurred on onClose", e);
+            throw e;
         }
         onClose.close();
     }

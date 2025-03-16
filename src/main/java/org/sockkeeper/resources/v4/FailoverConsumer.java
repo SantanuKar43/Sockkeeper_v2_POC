@@ -1,5 +1,6 @@
 package org.sockkeeper.resources.v4;
 
+import java.time.Instant;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.client.api.*;
 
@@ -26,11 +27,12 @@ public class FailoverConsumer implements MessageListener {
             sidelineProducer.newMessage()
                     .key(userId)
                     .value(message.getBytes(StandardCharsets.UTF_8))
-                    .eventTime(msg.getEventTime())
+                    .eventTime(msg.getEventTime() == 0 ? Instant.now().getEpochSecond() : msg.getEventTime())
                     .send();
 
             consumer.acknowledge(msg);
         } catch (Exception e) {
+            log.error("Exception occurred in failover consumer", e);
             consumer.negativeAcknowledge(msg);
         }
     }

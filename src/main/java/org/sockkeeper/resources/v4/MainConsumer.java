@@ -72,12 +72,13 @@ public class MainConsumer implements MessageListener {
                 sidelineProducer.newMessage()
                         .key(userId)
                         .value(message.getBytes(StandardCharsets.UTF_8))
-                        .eventTime(msg.getEventTime())
+                        .eventTime(msg.getEventTime() == 0 ? Instant.now().getEpochSecond() : msg.getEventTime())
                         .send();
 
                 consumer.acknowledge(msg);
             }
         } catch (Exception e) {
+            log.error("Exception occurred in main consumer", e);
             consumer.negativeAcknowledge(msg);
         } finally {
             consumeV4Time.close();
