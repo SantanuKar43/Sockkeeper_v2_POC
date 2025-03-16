@@ -7,11 +7,15 @@ import jakarta.ws.rs.core.Response;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,6 +54,9 @@ public class MessageDeliveryIT extends BaseIT {
                             }
                         });
         WebSocket webSocket = webSocketCompletableFuture.get();
+        Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {
+            webSocket.sendPing(ByteBuffer.wrap("ping".getBytes(StandardCharsets.UTF_8)));
+        }, 5, 20, TimeUnit.SECONDS);
 
         //publish
         String message = "hello world";
@@ -62,7 +69,7 @@ public class MessageDeliveryIT extends BaseIT {
         }
 
         //wait for message
-        String polledMessage = queue.poll(60, TimeUnit.SECONDS);
+        String polledMessage = queue.poll(10, TimeUnit.SECONDS);
 
         //close socket
         webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "ok");

@@ -7,11 +7,14 @@ import jakarta.ws.rs.core.Response;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,6 +63,9 @@ public class SidelineMessageDeliveryIT extends BaseIT {
                             }
                         });
         WebSocket webSocket = webSocketCompletableFuture.get();
+        Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {
+            webSocket.sendPing(ByteBuffer.wrap("ping".getBytes(StandardCharsets.UTF_8)));
+        }, 5, 20, TimeUnit.SECONDS);
 
         //wait for message
         String polledMessage = queue.poll(30, TimeUnit.SECONDS);

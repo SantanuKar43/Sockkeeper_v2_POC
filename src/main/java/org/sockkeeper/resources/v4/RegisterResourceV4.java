@@ -84,7 +84,7 @@ public class RegisterResourceV4 {
         log.info("socket connection opened for: {}", userId);
         session.setMaxIdleTimeout(-1);
         try (Jedis jedis = jedisPool.getResource()) {
-            jedis.setex(Utils.getRedisKeyForUser(userId), 60, hostname);
+            jedis.setex(Utils.getRedisKeyForUser(userId), 30, hostname);
         } catch (Exception e) {
             log.error("Error occurred on onOpen", e);
             throw e;
