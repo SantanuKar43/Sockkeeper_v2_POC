@@ -24,7 +24,7 @@ public class FailoverConsumer implements MessageListener {
         try {
             org.sockkeeper.core.Message message =
                     objectMapper.readValue(msg.getData(), org.sockkeeper.core.Message.class);
-            log.info("failover consumer message received: {}", new String(msg.getData()));
+            log.info("failover consumer message received: {}", message);
             String userId = message.destUserId();
             log.info("passing user:{}, message:{} to sideline", userId, message);
 

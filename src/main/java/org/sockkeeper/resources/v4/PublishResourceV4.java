@@ -99,7 +99,7 @@ public class PublishResourceV4 {
                 newMessage()
                 .key(userId)
                 .value(objectMapper.writeValueAsBytes(message))
-                .eventTime(Instant.now().getEpochSecond())
+                .eventTime(message.timestampEpochSecond())
                 .sendAsync();
     }
 }
