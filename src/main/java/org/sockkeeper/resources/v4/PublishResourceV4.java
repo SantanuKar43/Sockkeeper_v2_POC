@@ -1,6 +1,8 @@
 package org.sockkeeper.resources.v4;
 
 import com.codahale.metrics.annotation.Timed;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import jakarta.ws.rs.POST;
@@ -10,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.PulsarClientException;
+import org.sockkeeper.core.Message;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
@@ -26,21 +29,28 @@ public class PublishResourceV4 {
     private final JedisPool jedisPool;
     private final Map<String, Producer<byte[]>> producerPool;
     private final String sidelineTopic;
+    private final ObjectMapper objectMapper;
 
     @Inject
-    public PublishResourceV4(PulsarClient pulsarClient, JedisPool jedisPool, @Named("sidelineTopic") String sidelineTopic) {
+    public PublishResourceV4(PulsarClient pulsarClient, JedisPool jedisPool, @Named("sidelineTopic") String sidelineTopic,
+                             ObjectMapper objectMapper) {
         this.pulsarClient = pulsarClient;
         this.jedisPool = jedisPool;
         this.sidelineTopic = sidelineTopic;
+        this.objectMapper = objectMapper;
         this.producerPool = new ConcurrentHashMap<>();
     }
 
     @POST
     @Path("publish/{userId}")
     @Timed(name = "publish")
-    public void publish(@PathParam("userId") String userId, String message) {
+    public void publish(@PathParam("userId") String userId, String messageData) throws JsonProcessingException {
+        Message message = new Message(Utils.getUniqueId(),
+                userId,
+                messageData,
+                Instant.now().getEpochSecond());
         try (Jedis jedis = jedisPool.getResource()) {
-            log.info("publish request received for {}, message: {}", userId, message);
+            log.info("publish request received for {}, message: {}", userId, messageData);
 
             String userHost = jedis.get(Utils.getRedisKeyForUser(userId));
             if (userHost == null) {
@@ -67,8 +77,8 @@ public class PublishResourceV4 {
                         }).
                         newMessage()
                         .key(userId)
-                        .value(message.getBytes(StandardCharsets.UTF_8))
-                        .eventTime(Instant.now().getEpochSecond())
+                        .value(objectMapper.writeValueAsBytes(message))
+                        .eventTime(message.timestampEpochSecond())
                         .sendAsync();
 
             } catch (Exception e) {
@@ -78,7 +88,7 @@ public class PublishResourceV4 {
         }
     }
 
-    private void pushToSideline(String userId, String message) {
+    private void pushToSideline(String userId, Message message) throws JsonProcessingException {
         producerPool.computeIfAbsent(sidelineTopic, key -> {
                     try {
                         return pulsarClient.newProducer().topic(sidelineTopic).create();
@@ -88,7 +98,7 @@ public class PublishResourceV4 {
                 }).
                 newMessage()
                 .key(userId)
-                .value(message.getBytes(StandardCharsets.UTF_8))
+                .value(objectMapper.writeValueAsBytes(message))
                 .eventTime(Instant.now().getEpochSecond())
                 .sendAsync();
     }

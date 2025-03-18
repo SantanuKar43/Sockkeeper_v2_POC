@@ -11,6 +11,17 @@ server:
     - type: http
       port: 8889
 
+env: local
+localEnvHostname: sk-node-0
+hostLivenessTTLInSeconds: 5
+hostLivenessPeriodInSeconds: 2
+hostLivenessInitialDelayInSeconds: 2
+userHeartbeatTTLInSeconds: 30
+messageTTLInSeconds: 45
+sidelineTTLInSeconds: 600
+mainReconsumeDelayTimeInSeconds: 15
+sidelineReconsumeDelayTimeInSeconds: 15
+
 kafka:
   servers: 127.0.0.1:9092
 

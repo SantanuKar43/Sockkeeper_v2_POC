@@ -2,6 +2,7 @@ package org.sockkeeper.resources.v4;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import jakarta.websocket.OnClose;
@@ -16,6 +17,7 @@ import org.apache.pulsar.client.api.MessageListener;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.PulsarClientException;
 import org.apache.pulsar.client.api.SubscriptionType;
+import org.sockkeeper.config.SockkeeperConfiguration;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
@@ -41,17 +43,21 @@ public class RegisterResourceV4 {
     private final MetricRegistry metricRegistry;
     private final JedisPool jedisPool;
     private AtomicReference<String> topicAssigned;
+    private final long userHeartbeatTTLInSeconds;
 
     @Inject
     public RegisterResourceV4(@Named("hostname") String hostname,
                               MetricRegistry metricRegistry,
                               JedisPool jedisPool,
                               PulsarClient pulsarClient,
-                              @Named("sidelineTopic") String sidelineTopicName) throws PulsarClientException, PulsarAdminException {
+                              @Named("sidelineTopic") String sidelineTopicName,
+                              ObjectMapper objectMapper,
+                              SockkeeperConfiguration configuration) throws PulsarClientException, PulsarAdminException {
         this.hostname = hostname;
         this.metricRegistry = metricRegistry;
         this.topicAssigned = new AtomicReference<>(Utils.getTopicNameForHost(hostname));
         this.jedisPool = jedisPool;
+        this.userHeartbeatTTLInSeconds = configuration.getUserHeartbeatTTLInSeconds();
 
         try {
             MessageListener mainConsumer
@@ -60,7 +66,9 @@ public class RegisterResourceV4 {
                     metricRegistry,
                     jedisPool,
                     hostname,
-                    sidelineTopicName);
+                    sidelineTopicName,
+                    objectMapper,
+                    configuration);
             pulsarClient.newConsumer()
                     .topic(topicAssigned.get())
                     .consumerName(Utils.getMainConsumerName(hostname))
@@ -84,7 +92,7 @@ public class RegisterResourceV4 {
         log.info("socket connection opened for: {}", userId);
         session.setMaxIdleTimeout(-1);
         try (Jedis jedis = jedisPool.getResource()) {
-            jedis.setex(Utils.getRedisKeyForUser(userId), 30, hostname);
+            jedis.setex(Utils.getRedisKeyForUser(userId), userHeartbeatTTLInSeconds, hostname);
         } catch (Exception e) {
             log.error("Error occurred on onOpen", e);
             throw e;
@@ -97,7 +105,7 @@ public class RegisterResourceV4 {
     public void onMessage(Session session, String message, @PathParam("userId") String userId) {
         log.info("message: {} , received on socket connection for: {}", message, userId);
         try (Jedis jedis = jedisPool.getResource()) {
-            jedis.setex(Utils.getRedisKeyForUser(userId), 30, hostname);
+            jedis.setex(Utils.getRedisKeyForUser(userId), userHeartbeatTTLInSeconds, hostname);
         } catch (Exception e) {
             log.error("Error occurred on onMessage", e);
             throw e;

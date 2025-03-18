@@ -12,7 +12,7 @@ server:
       port: 8889
 
 env: local
-localEnvHostname: sk-node-0
+localEnvHostname: sk-node-1
 hostLivenessTTLInSeconds: 5
 hostLivenessPeriodInSeconds: 2
 hostLivenessInitialDelayInSeconds: 2

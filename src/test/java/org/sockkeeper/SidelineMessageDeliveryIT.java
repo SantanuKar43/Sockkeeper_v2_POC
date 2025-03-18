@@ -10,6 +10,7 @@ import java.net.http.WebSocket;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
@@ -30,7 +31,7 @@ public class SidelineMessageDeliveryIT extends BaseIT {
     @Test
     public void validateSidelineConsumer() throws Exception {
         // publish
-        String message = "hello world";
+        String message = UUID.randomUUID().toString();
         try (Response response = client.target(
                         String.format("http://localhost:%d/v4/publish/santanu", sockkeeperApp.getLocalPort()))
                 .request()

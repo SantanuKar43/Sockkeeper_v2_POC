@@ -77,6 +77,9 @@ public class SockkeeperModule extends AbstractModule {
     @Provides
     @Named("hostname")
     public String getHostName() throws UnknownHostException {
+        if (configuration.getEnv().equals("local")) {
+            return configuration.getLocalEnvHostname();
+        }
         return InetAddress.getLocalHost().getHostName();
     }
 

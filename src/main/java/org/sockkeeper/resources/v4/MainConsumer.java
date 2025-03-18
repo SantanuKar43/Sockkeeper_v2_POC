@@ -2,9 +2,11 @@ package org.sockkeeper.resources.v4;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.websocket.Session;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.client.api.*;
+import org.sockkeeper.config.SockkeeperConfiguration;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
@@ -24,17 +26,28 @@ public class MainConsumer implements MessageListener {
     private final JedisPool jedisPool;
     private final String hostname;
     private final Producer<byte[]> sidelineProducer;
+    private final ObjectMapper objectMapper;
+    private final long messageTTLInSeconds;
+    private final long reconsumeDelayInSeconds;
 
     public MainConsumer(ConcurrentHashMap<String, Session> userIdSessionMap,
                         PulsarClient pulsarClient,
                         MetricRegistry metricRegistry,
                         JedisPool jedisPool,
-                        String hostname, String sidelineTopic) throws PulsarClientException {
+                        String hostname, String sidelineTopic,
+                        ObjectMapper objectMapper,
+                        SockkeeperConfiguration configuration) throws PulsarClientException {
         this.userIdSessionMap = userIdSessionMap;
         this.metricRegistry = metricRegistry;
         this.jedisPool = jedisPool;
         this.hostname = hostname;
-        sidelineProducer = pulsarClient.newProducer().topic(sidelineTopic).create();
+        this.objectMapper = objectMapper;
+        this.sidelineProducer = pulsarClient
+                .newProducer()
+                .topic(sidelineTopic)
+                .create();
+        this.messageTTLInSeconds = configuration.getMessageTTLInSeconds();
+        this.reconsumeDelayInSeconds = configuration.getMainReconsumeDelayTimeInSeconds();
     }
 
     @Override
@@ -42,12 +55,13 @@ public class MainConsumer implements MessageListener {
         log.info("main consumer received started");
         Timer.Context consumeV4Time = metricRegistry.timer("ConsumeV4Time").time();
         try {
-            log.info("main consumer message received: {}", new String(msg.getData()));
-            String userId = msg.getKey();
-            String message = new String(msg.getData(), StandardCharsets.UTF_8);
-            Session session = userIdSessionMap.get(userId);
+            org.sockkeeper.core.Message message =
+                    objectMapper.readValue(msg.getData(), org.sockkeeper.core.Message.class);
+            log.info("main consumer message received: {}", message);
+            String userId = message.destUserId();
+            Session session = userIdSessionMap.get(message.destUserId());
             if (session != null && session.isOpen()) {
-                session.getAsyncRemote().sendText(message);
+                session.getAsyncRemote().sendText(message.data());
                 consumer.acknowledge(msg);
                 return;
             }
@@ -56,9 +70,9 @@ public class MainConsumer implements MessageListener {
                 String userHost = jedis.get(Utils.getRedisKeyForUser(userId));
                 if (hostname.equals(userHost)) {
                     // retry, should do with exponential backoff
-                    if (Instant.now().getEpochSecond() - msg.getEventTime() < 45) {
+                    if (Instant.now().getEpochSecond() - msg.getEventTime() < messageTTLInSeconds) {
                         log.info("user {} not online, will consume message later: {}", userId, message);
-                        consumer.reconsumeLater(msg, 15, TimeUnit.SECONDS);
+                        consumer.reconsumeLater(msg, reconsumeDelayInSeconds, TimeUnit.SECONDS);
                         return;
                     }
                 }
@@ -71,8 +85,8 @@ public class MainConsumer implements MessageListener {
 
                 sidelineProducer.newMessage()
                         .key(userId)
-                        .value(message.getBytes(StandardCharsets.UTF_8))
-                        .eventTime(msg.getEventTime() == 0 ? Instant.now().getEpochSecond() : msg.getEventTime())
+                        .value(msg.getData())
+                        .eventTime(message.timestampEpochSecond())
                         .send();
 
                 consumer.acknowledge(msg);

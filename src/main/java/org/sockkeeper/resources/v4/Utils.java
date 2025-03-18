@@ -1,5 +1,7 @@
 package org.sockkeeper.resources.v4;
 
+import java.util.UUID;
+
 public final class Utils {
 
     private Utils() {
@@ -33,5 +35,7 @@ public final class Utils {
         return "sideline-" + hostname;
     }
 
-
+    public static String getUniqueId() {
+        return UUID.randomUUID().toString();
+    }
 }

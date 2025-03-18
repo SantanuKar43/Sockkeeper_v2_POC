@@ -17,6 +17,17 @@ data:
       adminConnectors:
         - type: http
           port: 8889
+    
+    env: docker
+    localEnvHostname: sk-node-0
+    hostLivenessTTLInSeconds: 5
+    hostLivenessPeriodInSeconds: 2
+    hostLivenessInitialDelayInSeconds: 2
+    userHeartbeatTTLInSeconds: 15
+    messageTTLInSeconds: 45
+    sidelineTTLInSeconds: 600
+    mainReconsumeDelayTimeInSeconds: 15
+    sidelineReconsumeDelayTimeInSeconds: 15
 
     kafka:
       servers: host.docker.internal:9092
@@ -59,7 +70,7 @@ metadata:
   name: sk-node
 spec:
   serviceName: sockkeeper-headless
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
       app: sockkeeper
@@ -84,8 +95,8 @@ spec:
               memory: "512Mi"
               cpu: "1"
             limits:
-              memory: "1Gi"
-              cpu: "2"
+              memory: "512Mi"
+              cpu: "1"
       volumes:
         - name: config-volume
           configMap:
@@ -130,7 +141,6 @@ data:
       timeout connect 100s
       server sk-node-0 sk-node-0.sockkeeper-headless.default.svc.cluster.local:8888 check resolvers kube-dns resolve-prefer ipv4
       server sk-node-1 sk-node-1.sockkeeper-headless.default.svc.cluster.local:8888 check resolvers kube-dns resolve-prefer ipv4
-      server sk-node-2 sk-node-2.sockkeeper-headless.default.svc.cluster.local:8888 check resolvers kube-dns resolve-prefer ipv4
     
     frontend stats
       mode http

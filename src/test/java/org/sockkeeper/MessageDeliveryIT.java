@@ -10,12 +10,12 @@ import java.net.http.WebSocket;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,7 +59,7 @@ public class MessageDeliveryIT extends BaseIT {
         }, 5, 20, TimeUnit.SECONDS);
 
         //publish
-        String message = "hello world";
+        String message = UUID.randomUUID().toString();
         try (Response response = client.target(
                         String.format("http://localhost:%d/v4/publish/santanu", sockkeeperApp.getLocalPort()))
                 .request()

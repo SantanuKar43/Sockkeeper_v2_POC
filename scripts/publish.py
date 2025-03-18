@@ -7,7 +7,7 @@ import numpy as np
 
 # Configurations
 BASE_URL = "http://localhost:8081"
-NUM_USERS = 100
+NUM_USERS = 1000
 PUBLISH_RATE = 200  # Messages per second
 MAX_WORKERS = 200   # Allow enough workers for full rate
 

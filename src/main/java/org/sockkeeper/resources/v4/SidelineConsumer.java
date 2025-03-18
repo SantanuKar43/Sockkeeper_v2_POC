@@ -1,7 +1,9 @@
 package org.sockkeeper.resources.v4;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.client.api.*;
+import org.sockkeeper.config.SockkeeperConfiguration;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
@@ -15,11 +17,20 @@ public class SidelineConsumer implements MessageListener {
     private final PulsarClient pulsarClient;
     private final JedisPool jedisPool;
     private final Map<String, Producer<byte[]>> producerPool;
+    private final ObjectMapper objectMapper;
+    private final long sidelineTTLInSeconds;
+    private final long reconsumeDelayInSeconds;
 
-    public SidelineConsumer(PulsarClient pulsarClient, JedisPool jedisPool) {
+    public SidelineConsumer(PulsarClient pulsarClient,
+                            JedisPool jedisPool,
+                            ObjectMapper objectMapper,
+                            SockkeeperConfiguration configuration) {
         this.pulsarClient = pulsarClient;
         this.jedisPool = jedisPool;
-        producerPool = new ConcurrentHashMap<>();
+        this.objectMapper = objectMapper;
+        this.producerPool = new ConcurrentHashMap<>();
+        this.sidelineTTLInSeconds = configuration.getSidelineTTLInSeconds();
+        this.reconsumeDelayInSeconds = configuration.getSidelineReconsumeDelayTimeInSeconds();
     }
 
     @Override
@@ -29,30 +40,33 @@ public class SidelineConsumer implements MessageListener {
         // no, nack with exponential backoff until message is too delayed.
         log.info("sideline consumer received");
         try {
-            log.info("Message received from sideline: {}", new String(msg.getData()));
-            String userId = msg.getKey();
+            org.sockkeeper.core.Message message =
+                    objectMapper.readValue(msg.getData(), org.sockkeeper.core.Message.class);
+            log.info("Message received from sideline: {}", message);
+
+            String userId = message.destUserId();
 
             try (Jedis jedis = jedisPool.getResource()) {
                 String userHost = jedis.get(Utils.getRedisKeyForUser(userId));
                 if (userHost == null || userHost.isEmpty()) {
-                    if (Instant.now().getEpochSecond() - msg.getEventTime() > 5 * 60) {
-                        log.warn("couldn't find a host, dropping message {} for userId : {}", msg, userId);
+                    if (Instant.now().getEpochSecond() - message.timestampEpochSecond() > sidelineTTLInSeconds) {
+                        log.warn("couldn't find a host, dropping message {} for userId : {}", message, userId);
                         consumer.acknowledge(msg);
                         return;
                     }
-                    consumer.reconsumeLater(msg, 15, TimeUnit.SECONDS);
+                    consumer.reconsumeLater(msg, reconsumeDelayInSeconds, TimeUnit.SECONDS);
                     return;
                 }
 
                 String hostLiveness = jedis.get(Utils.getKeyForHostLiveness(userHost));
                 if (hostLiveness == null) {
                     log.info("Host not live for user {}", userId);
-                    if (Instant.now().getEpochSecond() - msg.getEventTime() > 5 * 60) {
-                        log.warn("couldn't find a host, dropping message {} for userId : {}", msg, userId);
+                    if (Instant.now().getEpochSecond() - message.timestampEpochSecond() > sidelineTTLInSeconds) {
+                        log.warn("couldn't find a host, dropping message {} for userId : {}", message, userId);
                         consumer.acknowledge(msg);
                         return;
                     }
-                    consumer.reconsumeLater(msg, 15, TimeUnit.SECONDS);
+                    consumer.reconsumeLater(msg, reconsumeDelayInSeconds, TimeUnit.SECONDS);
                     return;
                 }
 
@@ -68,7 +82,7 @@ public class SidelineConsumer implements MessageListener {
                         .newMessage()
                         .key(userId)
                         .value(msg.getData())
-                        .eventTime(msg.getEventTime() == 0 ? Instant.now().getEpochSecond() : msg.getEventTime()) // eventTime is reset on reconsumeLater. This will not be problem in prod as the event time will be part of the message payload
+                        .eventTime(message.timestampEpochSecond()) // eventTime is reset on reconsumeLater. This will not be problem in prod as the event time will be part of the message payload
                         .send();
 
                 consumer.acknowledge(msg);
