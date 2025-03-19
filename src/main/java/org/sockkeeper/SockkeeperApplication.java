@@ -11,7 +11,6 @@ import io.dropwizard.core.setup.Environment;
 import jakarta.websocket.server.ServerEndpointConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.curator.framework.CuratorFramework;
-import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.client.api.MessageListener;
 import org.apache.pulsar.client.api.PulsarClient;
@@ -83,7 +82,7 @@ public class SockkeeperApplication extends Application<SockkeeperConfiguration> 
 
         ObjectMapper objectMapper = injector.getInstance(ObjectMapper.class);
         startSidelineConsumer(pulsarClient, jedisPool, sidelineTopic, hostname, basicHealth, objectMapper, configuration);
-        startFailoverConsumers(hostname, injector, sidelineTopic, pulsarClient, basicHealth, objectMapper);
+        startFailoverConsumers(hostname, sidelineTopic, pulsarClient, basicHealth, objectMapper, configuration.getAllTopicNames());
         startLivenessJob(jedisPool, hostname, basicHealth, configuration);
 
     }
@@ -110,18 +109,17 @@ public class SockkeeperApplication extends Application<SockkeeperConfiguration> 
         basicHealth.markSidelineConsumerStarted();
     }
 
-    private static void startFailoverConsumers(String hostname, Injector injector, String sidelineTopic, PulsarClient pulsarClient,
-                                               BasicHealth basicHealth, ObjectMapper objectMapper) throws PulsarAdminException, PulsarClientException {
+    private static void startFailoverConsumers(String hostname,
+                                               String sidelineTopic,
+                                               PulsarClient pulsarClient,
+                                               BasicHealth basicHealth,
+                                               ObjectMapper objectMapper,
+                                               List<String> allTopics) throws PulsarClientException {
         String topicAssigned = Utils.getTopicNameForHost(hostname);
-        PulsarAdmin pulsarAdmin = injector.getInstance(PulsarAdmin.class);
-        List<String> allTopics = pulsarAdmin.topics().getList("public/default");
         allTopics.remove(topicAssigned);
         int i = 1;
         for (String topic : allTopics) {
             log.info("creating failover consumer on {}", topic);
-            if (!topic.contains("sk-node-") || topic.contains(topicAssigned)) {
-                continue;
-            }
             FailoverConsumer failoverConsumer = new FailoverConsumer(sidelineTopic, pulsarClient, objectMapper);
             pulsarClient.newConsumer()
                     .topic(topic)

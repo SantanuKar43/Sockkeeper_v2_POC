@@ -13,7 +13,6 @@ import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.PulsarClientException;
 import org.sockkeeper.config.SockkeeperConfiguration;
@@ -116,14 +115,6 @@ public class SockkeeperModule extends AbstractModule {
                 .serviceUrl(configuration.getPulsar().getServiceUrl())
                 .listenerThreads(Runtime.getRuntime().availableProcessors())
                 .ioThreads(Runtime.getRuntime().availableProcessors())
-                .build();
-    }
-
-    @Singleton
-    @Provides
-    public PulsarAdmin getPulsarAdmin() throws PulsarClientException {
-        return PulsarAdmin.builder()
-                .serviceHttpUrl(configuration.getPulsar().getAdminUrl())
                 .build();
     }
 }

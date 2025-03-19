@@ -21,6 +21,8 @@ messageTTLInSeconds: 45
 sidelineTTLInSeconds: 600
 mainReconsumeDelayTimeInSeconds: 15
 sidelineReconsumeDelayTimeInSeconds: 15
+allTopicNames:
+  - sk-node-0-topic
 
 kafka:
   servers: 127.0.0.1:9092
@@ -34,7 +36,6 @@ zk:
 
 pulsar:
   serviceUrl: pulsar://localhost:6650
-  adminUrl: http://localhost:8080
 
 redis:
   host: 127.0.0.1

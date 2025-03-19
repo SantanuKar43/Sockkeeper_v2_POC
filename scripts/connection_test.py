@@ -11,7 +11,7 @@ MAX_USERS = 1000  # Maximum number of connections
 INTERVAL = 0.05  # Time interval between new connections (in seconds)
 RECONNECT_DELAY = 15  # Time before attempting reconnection (in seconds)
 DISCONNECT_TIME = 600  # Disconnect every 10 minutes (server or client-side)
-PING_INTERVAL = 20  # Send a "ping" message every 10 seconds
+PING_INTERVAL = 10  # Send a "ping" message every 10 seconds
 
 latency_metrics = []  # Store latencies globally
 running_tasks = []  # Store active tasks for cleanup

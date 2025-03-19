@@ -2,6 +2,7 @@ package org.sockkeeper.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.dropwizard.core.Configuration;
+import java.util.List;
 import lombok.Getter;
 
 @Getter
@@ -16,6 +17,7 @@ public class SockkeeperConfiguration extends Configuration {
     private long sidelineReconsumeDelayTimeInSeconds;
     private long hostLivenessPeriodInSeconds;
     private long hostLivenessInitialDelayInSeconds;
+    private List<String> allTopicNames;
     private KafkaConfig kafka;
     private ZkConfig zk;
     private PulsarConfig pulsar;

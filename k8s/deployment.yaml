@@ -28,6 +28,10 @@ data:
     sidelineTTLInSeconds: 600
     mainReconsumeDelayTimeInSeconds: 15
     sidelineReconsumeDelayTimeInSeconds: 15
+    allTopicNames:
+    - sk-node-0-topic
+    - sk-node-1-topic
+    - sk-node-2-topic
 
     kafka:
       servers: host.docker.internal:9092
@@ -41,7 +45,6 @@ data:
 
     pulsar:
       serviceUrl: pulsar://host.docker.internal:6650
-      adminUrl: http://host.docker.internal:8080
 
     redis:
       host: host.docker.internal
@@ -70,7 +73,7 @@ metadata:
   name: sk-node
 spec:
   serviceName: sockkeeper-headless
-  replicas: 2
+  replicas: 3
   selector:
     matchLabels:
       app: sockkeeper
@@ -141,6 +144,7 @@ data:
       timeout connect 100s
       server sk-node-0 sk-node-0.sockkeeper-headless.default.svc.cluster.local:8888 check resolvers kube-dns resolve-prefer ipv4
       server sk-node-1 sk-node-1.sockkeeper-headless.default.svc.cluster.local:8888 check resolvers kube-dns resolve-prefer ipv4
+      server sk-node-2 sk-node-2.sockkeeper-headless.default.svc.cluster.local:8888 check resolvers kube-dns resolve-prefer ipv4
     
     frontend stats
       mode http
