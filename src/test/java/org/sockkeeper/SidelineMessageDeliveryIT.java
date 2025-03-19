@@ -2,6 +2,8 @@ package org.sockkeeper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import io.dropwizard.testing.ResourceHelpers;
+import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
 import java.net.URI;
@@ -18,6 +20,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.eclipse.jetty.http.HttpStatus;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -25,6 +28,13 @@ public class SidelineMessageDeliveryIT extends BaseIT {
 
     @BeforeEach
     public void setup() throws Exception {
+        sockkeeperApp = new DropwizardAppExtension<>(
+                SockkeeperApplication.class,
+                ResourceHelpers.resourceFilePath("test-config.yml")
+        );
+        sockkeeperApp.before();
+        client = sockkeeperApp.client();
+
         waitForHealthCheckSuccess(client, Duration.ofSeconds(10));
     }
 
@@ -77,5 +87,10 @@ public class SidelineMessageDeliveryIT extends BaseIT {
 
         //verify
         assertEquals(message, polledMessage);
+    }
+
+    @AfterEach
+    public void tearDownAll() {
+        sockkeeperApp.after();
     }
 }

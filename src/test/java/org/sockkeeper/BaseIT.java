@@ -1,11 +1,9 @@
 package org.sockkeeper;
 
 import com.redis.testcontainers.RedisContainer;
-import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.core.Response;
-import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
@@ -13,7 +11,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.curator.test.TestingServer;
 import org.eclipse.jetty.http.HttpStatus;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.sockkeeper.config.SockkeeperConfiguration;
 import org.testcontainers.containers.PulsarContainer;
@@ -45,12 +42,7 @@ public class BaseIT {
 
     @BeforeAll
     public static void setupAll() throws Exception {
-        sockkeeperApp = new DropwizardAppExtension<>(
-                SockkeeperApplication.class,
-                ResourceHelpers.resourceFilePath("test-config.yml")
-        );
-        sockkeeperApp.before();
-        client = sockkeeperApp.client();
+
     }
 
     protected static void waitForHealthCheckSuccess(Client client, Duration timeout) throws Exception {
@@ -68,11 +60,6 @@ public class BaseIT {
                 Thread.sleep(1000);
             }
         }
-    }
-
-    @AfterAll
-    public static void tearDownAll() throws IOException, InterruptedException {
-        sockkeeperApp.after();
     }
 
 }

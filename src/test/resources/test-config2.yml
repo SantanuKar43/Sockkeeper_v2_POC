@@ -6,13 +6,13 @@ logging:
 server:
   applicationConnectors:
     - type: http
-      port: 8888
+      port: 8881
   adminConnectors:
     - type: http
-      port: 8889
+      port: 8882
 
 env: local
-localEnvHostname: sk-node-1
+localEnvHostname: sk-node-0
 hostLivenessTTLInSeconds: 5
 hostLivenessPeriodInSeconds: 2
 hostLivenessInitialDelayInSeconds: 2
@@ -21,6 +21,9 @@ messageTTLInSeconds: 45
 sidelineTTLInSeconds: 600
 mainReconsumeDelayTimeInSeconds: 15
 sidelineReconsumeDelayTimeInSeconds: 15
+allTopicNames:
+  - sk-node-0-topic
+  - sk-node-1-topic
 
 kafka:
   servers: 127.0.0.1:9092
@@ -34,7 +37,6 @@ zk:
 
 pulsar:
   serviceUrl: pulsar://localhost:6650
-  adminUrl: http://localhost:8080
 
 redis:
   host: 127.0.0.1

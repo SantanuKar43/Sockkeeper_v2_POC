@@ -23,14 +23,15 @@ import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import redis.clients.jedis.Jedis;
 
-public class MessageDeliveryIT extends BaseIT {
+public class FailoverMessageDeliveryIT extends BaseIT {
 
     @BeforeEach
     public void setup() throws Exception {
         sockkeeperApp = new DropwizardAppExtension<>(
                 SockkeeperApplication.class,
-                ResourceHelpers.resourceFilePath("test-config.yml")
+                ResourceHelpers.resourceFilePath("test-config2.yml")
         );
         sockkeeperApp.before();
         client = sockkeeperApp.client();
@@ -39,10 +40,22 @@ public class MessageDeliveryIT extends BaseIT {
     }
 
     @Test
-    public void testMessageDelivery() throws Exception {
-        //connect and listen for messages
-        BlockingQueue<String> queue = new ArrayBlockingQueue<>(10);
+    public void validateFailoverMessageDelivery() throws Exception {
+        Jedis jedis = new Jedis(redis.getRedisHost(), redis.getRedisPort());
+        jedis.set("user:santanu", "sk-node-1");
+        jedis.set("host:sk-node-1", "sk-node-1");
+        String message = UUID.randomUUID().toString();
+        try (Response response = client.target(
+                        String.format("http://localhost:%d/v4/publish/santanu", sockkeeperApp.getLocalPort()))
+                .request()
+                .post(Entity.text(message))) {
 
+            assertTrue(HttpStatus.isSuccess(response.getStatus()));
+        }
+        jedis.del("host:sk-node-1");
+        jedis.del("user:santanu");
+
+        BlockingQueue<String> queue = new ArrayBlockingQueue<>(10);
         CompletableFuture<WebSocket> webSocketCompletableFuture = HttpClient.newHttpClient()
                 .newWebSocketBuilder()
                 .connectTimeout(Duration.ofSeconds(5))
@@ -68,18 +81,7 @@ public class MessageDeliveryIT extends BaseIT {
             webSocket.sendPing(ByteBuffer.wrap("ping".getBytes(StandardCharsets.UTF_8)));
         }, 5, 20, TimeUnit.SECONDS);
 
-        //publish
-        String message = UUID.randomUUID().toString();
-        try (Response response = client.target(
-                        String.format("http://localhost:%d/v4/publish/santanu", sockkeeperApp.getLocalPort()))
-                .request()
-                .post(Entity.text(message))) {
-
-            assertTrue(HttpStatus.isSuccess(response.getStatus()));
-        }
-
-        //wait for message
-        String polledMessage = queue.poll(10, TimeUnit.SECONDS);
+        String polledMessage = queue.poll(20, TimeUnit.SECONDS);
 
         //close socket
         webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "ok");
