@@ -17,7 +17,8 @@ public class SockkeeperConfiguration extends Configuration {
     private long sidelineReconsumeDelayTimeInSeconds;
     private long hostLivenessPeriodInSeconds;
     private long hostLivenessInitialDelayInSeconds;
-    private List<String> allTopicNames;
+    private String topicNamePrefix;
+    private int topicPartitions;
     private KafkaConfig kafka;
     private ZkConfig zk;
     private PulsarConfig pulsar;

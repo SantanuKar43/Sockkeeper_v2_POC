@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.PulsarClientException;
+import org.sockkeeper.config.SockkeeperConfiguration;
 import org.sockkeeper.core.Message;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
@@ -30,15 +31,17 @@ public class PublishResourceV4 {
     private final Map<String, Producer<byte[]>> producerPool;
     private final String sidelineTopic;
     private final ObjectMapper objectMapper;
+    private final String topicNamePrefix;
 
     @Inject
     public PublishResourceV4(PulsarClient pulsarClient, JedisPool jedisPool, @Named("sidelineTopic") String sidelineTopic,
-                             ObjectMapper objectMapper) {
+                             ObjectMapper objectMapper, SockkeeperConfiguration configuration) {
         this.pulsarClient = pulsarClient;
         this.jedisPool = jedisPool;
         this.sidelineTopic = sidelineTopic;
         this.objectMapper = objectMapper;
         this.producerPool = new ConcurrentHashMap<>();
+        this.topicNamePrefix = configuration.getTopicNamePrefix();
     }
 
     @POST
@@ -67,7 +70,7 @@ public class PublishResourceV4 {
             }
 
             try {
-                String topic = Utils.getTopicNameForHost(userHost);
+                String topic = Utils.getTopicNameForHost(userHost, topicNamePrefix);
                 producerPool.computeIfAbsent(topic, key -> {
                             try {
                                 return pulsarClient.newProducer().topic(topic).create();

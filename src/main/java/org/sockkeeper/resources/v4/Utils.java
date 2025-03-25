@@ -7,8 +7,19 @@ public final class Utils {
     private Utils() {
     }
 
-    public static String getTopicNameForHost(String hostname) {
-        return hostname + "-topic";
+    public static String getTopicNameForHost(String hostname, String topicNamePrefix) {
+        int partition = getPartition(hostname);
+        return getTopicName(topicNamePrefix, partition);
+    }
+
+    public static String getTopicName(String topicNamePrefix, int partition) {
+        return topicNamePrefix + "-partition-" + partition;
+    }
+
+    public static int getPartition(String hostname) {
+        // last token of hostname is used as partition id
+        String[] split = hostname.split("-");
+        return Integer.parseInt(split[split.length - 1]);
     }
 
     public static String getSubscriptionName() {

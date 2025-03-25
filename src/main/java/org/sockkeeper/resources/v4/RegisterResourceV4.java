@@ -55,7 +55,7 @@ public class RegisterResourceV4 {
                               SockkeeperConfiguration configuration) throws PulsarClientException, PulsarAdminException {
         this.hostname = hostname;
         this.metricRegistry = metricRegistry;
-        this.topicAssigned = new AtomicReference<>(Utils.getTopicNameForHost(hostname));
+        this.topicAssigned = new AtomicReference<>(Utils.getTopicNameForHost(hostname, configuration.getTopicNamePrefix()));
         this.jedisPool = jedisPool;
         this.userHeartbeatTTLInSeconds = configuration.getUserHeartbeatTTLInSeconds();
 

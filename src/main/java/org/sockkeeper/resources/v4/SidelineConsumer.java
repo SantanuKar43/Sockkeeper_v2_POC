@@ -20,6 +20,7 @@ public class SidelineConsumer implements MessageListener {
     private final ObjectMapper objectMapper;
     private final long sidelineTTLInSeconds;
     private final long reconsumeDelayInSeconds;
+    private final String topicNamePrefix;
 
     public SidelineConsumer(PulsarClient pulsarClient,
                             JedisPool jedisPool,
@@ -31,6 +32,7 @@ public class SidelineConsumer implements MessageListener {
         this.producerPool = new ConcurrentHashMap<>();
         this.sidelineTTLInSeconds = configuration.getSidelineTTLInSeconds();
         this.reconsumeDelayInSeconds = configuration.getSidelineReconsumeDelayTimeInSeconds();
+        this.topicNamePrefix = configuration.getTopicNamePrefix();
     }
 
     @Override
@@ -71,7 +73,7 @@ public class SidelineConsumer implements MessageListener {
                 }
 
                 log.info("passing message for user:{}, to present host:{}", userId, userHost);
-                String topic = Utils.getTopicNameForHost(userHost);
+                String topic = Utils.getTopicNameForHost(userHost, topicNamePrefix);
                 producerPool.computeIfAbsent(topic, key -> {
                             try {
                                 return pulsarClient.newProducer().topic(topic).create();

@@ -82,7 +82,7 @@ public class SockkeeperApplication extends Application<SockkeeperConfiguration> 
 
         ObjectMapper objectMapper = injector.getInstance(ObjectMapper.class);
         startSidelineConsumer(pulsarClient, jedisPool, sidelineTopic, hostname, basicHealth, objectMapper, configuration);
-        startFailoverConsumers(hostname, sidelineTopic, pulsarClient, basicHealth, objectMapper, configuration.getAllTopicNames());
+        startFailoverConsumers(hostname, sidelineTopic, pulsarClient, basicHealth, objectMapper, configuration.getTopicNamePrefix(), configuration.getTopicPartitions());
         startLivenessJob(jedisPool, hostname, basicHealth, configuration);
 
     }
@@ -114,11 +114,15 @@ public class SockkeeperApplication extends Application<SockkeeperConfiguration> 
                                                PulsarClient pulsarClient,
                                                BasicHealth basicHealth,
                                                ObjectMapper objectMapper,
-                                               List<String> allTopics) throws PulsarClientException {
-        String topicAssigned = Utils.getTopicNameForHost(hostname);
-        allTopics.remove(topicAssigned);
+                                               String topicNamePrefix,
+                                               int totalPartitions) throws PulsarClientException {
+        String topicAssigned = Utils.getTopicNameForHost(hostname, topicNamePrefix);
         int i = 1;
-        for (String topic : allTopics) {
+        for (int partition = 0; partition < totalPartitions; partition++) {
+            String topic = Utils.getTopicName(topicNamePrefix, partition);
+            if (topic.equals(topicAssigned)) {
+                continue;
+            }
             log.info("creating failover consumer on {}", topic);
             FailoverConsumer failoverConsumer = new FailoverConsumer(sidelineTopic, pulsarClient, objectMapper);
             pulsarClient.newConsumer()

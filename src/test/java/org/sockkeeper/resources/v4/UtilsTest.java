@@ -7,7 +7,7 @@ class UtilsTest {
 
     @Test
     void getTopicNameForHost() {
-        assertEquals("hostname-topic", Utils.getTopicNameForHost("hostname"));
+        assertEquals("topic-pref-partition-0", Utils.getTopicNameForHost("host-name-0", "topic-pref"));
     }
 
     @Test

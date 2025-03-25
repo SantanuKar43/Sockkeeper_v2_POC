@@ -28,10 +28,8 @@ data:
     sidelineTTLInSeconds: 600
     mainReconsumeDelayTimeInSeconds: 15
     sidelineReconsumeDelayTimeInSeconds: 15
-    allTopicNames:
-    - sk-node-0-topic
-    - sk-node-1-topic
-    - sk-node-2-topic
+    topicNamePrefix: sk-node-topic
+    topicPartitions: 3
 
     kafka:
       servers: host.docker.internal:9092

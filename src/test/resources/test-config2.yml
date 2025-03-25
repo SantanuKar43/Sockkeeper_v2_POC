@@ -21,9 +21,8 @@ messageTTLInSeconds: 45
 sidelineTTLInSeconds: 600
 mainReconsumeDelayTimeInSeconds: 15
 sidelineReconsumeDelayTimeInSeconds: 15
-allTopicNames:
-  - sk-node-0-topic
-  - sk-node-1-topic
+topicNamePrefix: sk-node-topic
+topicPartitions: 2
 
 kafka:
   servers: 127.0.0.1:9092
